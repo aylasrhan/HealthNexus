@@ -28,6 +28,7 @@ Route::post('Api_login', [ApiAuthController::class, 'login']);
 Route::post('areas', [ApiPatientController::class, 'areas']);
 Route::get('get-nationalities', [ApiAuthController::class, 'getNationalities']);
 Route::get('cities', [ApiAuthController::class, 'getCities']);
+Route::get('clinics', [ApiAuthController::class, 'getClinics']);
 Route::middleware('auth:api')->group(function () {
     Route::post('email/verify', [ApiAuthController::class, 'verify']);
     Route::get('email/resend', [ApiAuthController::class, 'resend']);

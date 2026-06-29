@@ -20,6 +20,7 @@ use Illuminate\Support\Str;
 use App\Mail\VerificationCodeMail;
 use App\Models\back\gnr_m_nationality;
 use App\Models\back\gnr_m_cities;
+use App\Models\back\gnr_m_clinics;
 class ApiAuthController extends Controller
 {
     use ResponseTrait;
@@ -191,12 +192,18 @@ class ApiAuthController extends Controller
         return true;
     }
     // أيلا
-    // لا تنسي إضافة الـ Import في الأعلى: use App\Models\back\gnr_m_nationality;
+   public function getClinics() {
+    // استخدمنا اسم الموديل الصحيح هنا
+    $clinics = gnr_m_clinics::all(); 
 
+    return response()->json([
+        'status' => 'success',
+        'data' => $clinics
+    ]);
+}
 // داخل ApiAuthController.php
 public function getNationalities()
 {
-    // تأكدي من كتابة اسم المودل بدون أي مسار إضافي أمامه
     $nationalities = gnr_m_nationality::all(); 
     
     return response()->json([
