@@ -193,7 +193,6 @@ class ApiAuthController extends Controller
     }
     // أيلا
    public function getClinics() {
-    // استخدمنا اسم الموديل الصحيح هنا
     $clinics = gnr_m_clinics::all(); 
 
     return response()->json([
@@ -227,7 +226,7 @@ public function getCities()
     return response()->json([
         'status' => true,
         'data' => [
-            'cities' => $cities // تأكدي أن المفتاح هنا هو 'cities'
+            'cities' => $cities 
         ]
     ]);
 }

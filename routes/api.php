@@ -29,6 +29,9 @@ Route::post('areas', [ApiPatientController::class, 'areas']);
 Route::get('get-nationalities', [ApiAuthController::class, 'getNationalities']);
 Route::get('cities', [ApiAuthController::class, 'getCities']);
 Route::get('clinics', [ApiAuthController::class, 'getClinics']);
+    Route::get('visits', [ApiVisitsController::class,'pat_visits']);
+    Route::get('famous_doctors', [ApiPatientController::class, 'famous_doctors']);
+
 Route::middleware('auth:api')->group(function () {
     Route::post('email/verify', [ApiAuthController::class, 'verify']);
     Route::get('email/resend', [ApiAuthController::class, 'resend']);
@@ -39,11 +42,11 @@ Route::middleware('auth:api')->group(function () {
 #########################################################################################
 Route::middleware('auth:api')->group(function () {
     Route::get('departments', [ApiPatientController::class, 'departments']);
-    Route::get('famous_doctors', [ApiPatientController::class, 'famous_doctors']);
+    // Route::get('famous_doctors', [ApiPatientController::class, 'famous_doctors']);
     Route::post('doctors_by_department', [ApiDoctorController::class, 'dep_doctor']);
     Route::post('search', [ApiDoctorController::class, 'search']);
     Route::post('review', [ApiDoctorController::class, 'review']);
-    Route::get('visits', [ApiVisitsController::class,'pat_visits']);
+    // Route::get('visits', [ApiVisitsController::class,'pat_visits']);
     Route::post('medical-info', [ApiMedical_fileController::class, 'medical_info']);
 
     ################################# Appointment Apis ########################################

@@ -59,16 +59,31 @@ class ApiPatientController extends Controller
         }
     }
 
-    public function famous_doctors(): JsonResponse
-    {
+public function famous_doctors(): JsonResponse
+{
+    $famous_doctors = $this->DoctorRepository->getFamousDoctors();
 
-        $famous_doctors = $this->DoctorRepository->getFamousDoctors();
-        if ($famous_doctors->count() == 0) {
-            return $this->returnSuccess("D01", "There are no Famous Doctors..");
-        } else
-            return $this->returnData("famous doctors", $famous_doctors, "", "D00");
-
+    if ($famous_doctors->isEmpty()) {
+        return $this->returnSuccess("D01", "There are no Famous Doctors..");
     }
 
+    // بدلاً من استخدام map فقط للأسماء، سنقوم بتحويل الكوليكشن إلى مصفوفة (Array)
+    // لضمان إعادة بناء هيكل الـ JSON بشكل سليم من قبل لارفل
+    $data = $famous_doctors->map(function ($doctor) {
+        return [
+            'id' => $doctor->id,
+            'name_ar' => preg_replace('/[\x00-\x1F\x7F]/u', '', $doctor->name_ar),
+            'specialization_ar' => preg_replace('/[\x00-\x1F\x7F]/u', '', $doctor->specialization_ar),
+            'famous' => (int) $doctor->famous, // فرض تحويل القيمة لرقم صحيح لضمان سلامة الـ JSON
+            'act' => (int) $doctor->act,
+            // أضيفي هنا أي حقول أخرى ضرورية تظهر في تطبيقك
+        ];
+    });
+
+    return response()->json([
+        'status' => 'success',
+        'data' => $data
+    ], 200, [], JSON_UNESCAPED_UNICODE);
+}
 
 }
