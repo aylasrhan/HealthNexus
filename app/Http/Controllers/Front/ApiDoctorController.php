@@ -33,16 +33,19 @@ class ApiDoctorController extends Controller
     }
 
     public function dep_doctor(Request $request): JsonResponse
-    {
-        $clinic = $request->clinic;
-        $doctors = $this->DoctorRepository->show($clinic);
-        if (!$doctors) {
-            return $this->returnError("D01", "there are no doctors");
-        } else {
-            return $this->returnData("doctors", $doctors, "", "D00");
-        }
-
+{
+    // استقبلي القيمة باسم subgrp وليس clinic
+    $subgrp = $request->subgrp; 
+    
+    // تأكدي أن الريبوزيتوري يقوم بالبحث باستخدام subgrp
+    $doctors = $this->DoctorRepository->show($subgrp);
+    
+    if (!$doctors || (is_object($doctors) && $doctors->isEmpty())) {
+        return $this->returnError("D01", "there are no doctors");
+    } else {
+        return $this->returnData("doctors", $doctors, "", "D00");
     }
+}
 
     public function review(Request $request): JsonResponse
     {
