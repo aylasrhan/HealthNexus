@@ -31,17 +31,43 @@ class ApiDoctorController extends Controller
         $this->ReviewRepository = $ReviewRepository;
 
     }
+// public function dep_doctor(Request $request)
+// {
+//     $subgrp = $request->subgrp;
+    
+//     // الحل: استخدام CAST أو التأكد من مطابقة النوع
+//     // نقوم بالبحث عن الأطباء الذين يطابق الـ subgrp لديهم القيمة المرسلة
+//     $doctors = doctors::where('subgrp', (string)$subgrp)->get();
+
+//     if ($doctors->isEmpty()) {
+//         // إضافة طباعة للـ log لمعرفة ما الذي يصل بالضبط للسيرفر
+//         \Log::info("البحث عن أطباء للتخصص: " . $subgrp);
+//         return response()->json(['success' => false, 'message' => 'لا يوجد أطباء'], 404);
+//     }
+
+//     return response()->json([
+//         'success' => true,
+//         'doctors' => $doctors->map(function ($doctor) {
+//             return [
+//                 'id' => $doctor->id,
+//                 'name_ar' => $doctor->name_ar,
+//                 'from_time' => $doctor->from_time,
+//                 'to_time' => $doctor->to_time,
+//                 'slot_time' => $doctor->slot_time,
+//             ];
+//         })
+//     ], 200);
+// }
 public function dep_doctor(Request $request)
 {
+    \Log::info("تم استدعاء دالة dep_doctor الجديدة!");
     $subgrp = $request->subgrp;
-    
-    // الحل: استخدام CAST أو التأكد من مطابقة النوع
-    // نقوم بالبحث عن الأطباء الذين يطابق الـ subgrp لديهم القيمة المرسلة
     $doctors = doctors::where('subgrp', (string)$subgrp)->get();
 
+    // إضافة سطر للتأكد من البيانات
+    \Log::info("البيانات المسترجعة من قاعدة البيانات: " . $doctors->toJson());
+
     if ($doctors->isEmpty()) {
-        // إضافة طباعة للـ log لمعرفة ما الذي يصل بالضبط للسيرفر
-        \Log::info("البحث عن أطباء للتخصص: " . $subgrp);
         return response()->json(['success' => false, 'message' => 'لا يوجد أطباء'], 404);
     }
 
@@ -49,11 +75,11 @@ public function dep_doctor(Request $request)
         'success' => true,
         'doctors' => $doctors->map(function ($doctor) {
             return [
-                'id' => $doctor->id,
-                'name_ar' => $doctor->name_ar,
-                'from_time' => $doctor->from_time,
-                'to_time' => $doctor->to_time,
-                'slot_time' => $doctor->slot_time,
+               'id' => $doctor->id,
+            'name_ar' => $doctor->name_ar,
+            'from_time' => $doctor->from_time, // تأكدي أن هذه الأسماء مطابقة لقاعدة البيانات
+            'to_time' => $doctor->to_time,
+            'slot_time' => $doctor->slot_time,
             ];
         })
     ], 200);
