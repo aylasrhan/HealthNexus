@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Controllers\Front;
-
+use App\Models\back\doctors;
 use App\Http\Controllers\Controller;
 use App\Models\back\gnr_m_clinics;
 use App\Repositories\Clinics\IClinicRepository;
@@ -31,20 +31,32 @@ class ApiDoctorController extends Controller
         $this->ReviewRepository = $ReviewRepository;
 
     }
-
-    public function dep_doctor(Request $request): JsonResponse
+public function dep_doctor(Request $request)
 {
-    // استقبلي القيمة باسم subgrp وليس clinic
-    $subgrp = $request->subgrp; 
+    $subgrp = $request->subgrp;
     
-    // تأكدي أن الريبوزيتوري يقوم بالبحث باستخدام subgrp
-    $doctors = $this->DoctorRepository->show($subgrp);
-    
-    if (!$doctors || (is_object($doctors) && $doctors->isEmpty())) {
-        return $this->returnError("D01", "there are no doctors");
-    } else {
-        return $this->returnData("doctors", $doctors, "", "D00");
+    // الحل: استخدام CAST أو التأكد من مطابقة النوع
+    // نقوم بالبحث عن الأطباء الذين يطابق الـ subgrp لديهم القيمة المرسلة
+    $doctors = doctors::where('subgrp', (string)$subgrp)->get();
+
+    if ($doctors->isEmpty()) {
+        // إضافة طباعة للـ log لمعرفة ما الذي يصل بالضبط للسيرفر
+        \Log::info("البحث عن أطباء للتخصص: " . $subgrp);
+        return response()->json(['success' => false, 'message' => 'لا يوجد أطباء'], 404);
     }
+
+    return response()->json([
+        'success' => true,
+        'doctors' => $doctors->map(function ($doctor) {
+            return [
+                'id' => $doctor->id,
+                'name_ar' => $doctor->name_ar,
+                'from_time' => $doctor->from_time,
+                'to_time' => $doctor->to_time,
+                'slot_time' => $doctor->slot_time,
+            ];
+        })
+    ], 200);
 }
 
     public function review(Request $request): JsonResponse

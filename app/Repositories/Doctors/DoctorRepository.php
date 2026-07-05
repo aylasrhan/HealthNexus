@@ -112,4 +112,12 @@ class DoctorRepository implements IDoctorRepository
             DB::rollback();
         }
     }
+
+    public function getFamousDoctors()
+{
+    // نفترض هنا أن لديك عمود في جدول الأطباء اسمه 'famous' 
+    // وقيمته 1 تعني أن الطبيب مشهور.
+    // إذا كان اسم العمود مختلفاً، قومي بتغيير 'famous' بالاسم الصحيح
+    return doctors::where('famous', 1)->get();
+}
 }
