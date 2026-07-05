@@ -23,5 +23,6 @@ interface IDoctorRepository
     public function search($key);
 
     public function destroy($doctors);
+    public function getFamousDoctors(); // أضيفي هذا السطر
 
 }
