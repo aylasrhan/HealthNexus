@@ -17,7 +17,7 @@ class Appointment extends Model
         'appointment_for',
         'appointment_with',
         'appointment_date',
-        'appointment_time',
+        'time',
         'available_slot',
         'status',
         'is_deleted',

@@ -129,16 +129,38 @@ class ApiAppointmentController extends Controller
         }
     }
 
-    public function pat_appoints(): JsonResponse
-    {
-        $appointments = $this->AppointmentRepository->pat_appoints();
-        if (!$appointments) {
-            return $this->returnError("D01", "There are no appointments..");
-        } else {
-            return $this->returnData("upcoming_Appointment", $appointments, "", "D00");
-        }
+    // public function pat_appoints(): JsonResponse
+    // {
+    //     $appointments = $this->AppointmentRepository->pat_appoints();
+    //     if (!$appointments) {
+    //         return $this->returnError("D01", "There are no appointments..");
+    //     } else {
+    //         return $this->returnData("upcoming_Appointment", $appointments, "", "D00");
+    //     }
+    // }
+public function pat_appoints(): JsonResponse
+{
+    $appointments = $this->AppointmentRepository->pat_appoints(); // هذه تجلب البيانات مع الـ doctor
+
+    if ($appointments->isEmpty()) {
+        return response()->json(['status' => 'success', 'data' => []], 200);
     }
 
+    // هنا نقوم بعمل map للبيانات لتكون واضحة للتطبيق
+    $data = $appointments->map(function ($appointment) {
+        return [
+            'id' => $appointment->id,
+            'appointment_date' => $appointment->appointment_date,
+            // جلب اسم الطبيب من العلاقة التي جلبتها في الـ Repository
+'doctor_name' => $appointment->doctor ? $appointment->doctor->name : 'طبيب غير محدد',            // جلب الوقت من العلاقة timeSlot إذا كان متاحاً
+'time' => $appointment->time ? \Carbon\Carbon::parse($appointment->time)->format('H:i') : '--:--',        ];
+    });
+
+    return response()->json([
+        'status' => 'success',
+        'upcoming_Appointment' => $data
+    ], 200);
+}
     public function doc_appoints(): JsonResponse
     {
         $appointments = $this->AppointmentRepository->doc_appoints();

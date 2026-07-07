@@ -100,6 +100,7 @@ class ApiAuthController extends Controller
 
     public function login(Request $request): JsonResponse
     {
+        \Log::info("الدور المستلم هو: " . $request->role); // هذا السطر سيحفظ المعلومة في ملف laravel.log
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
             'password' => 'required',
