@@ -67,13 +67,18 @@ class AppointmentRepository implements IAppointmentRepository
     public function pat_appoints()
     {
         $user = auth()->user();
+        if (!$user) {
+        return response()->json(['error' => 'Unauthenticated'], 401);
+    }
         $user_id = $user->id;
+        \Log::info("جاري جلب مواعيد المستخدم ID: " . $user_id);
         $today = Carbon::today()->format('Y-m-d');
         return Appointment::with('doctor', 'timeSlot')
             ->where('appointment_for', $user_id)
             ->whereDate('appointment_date', '>=', $today)
             ->where('is_deleted', 0)
             ->orderBy('id', 'DESC')->get();
+            \Log::info("عدد المواعيد التي تم العثور عليها: " . $results->count());
     }
 
     public function doc_appoints()

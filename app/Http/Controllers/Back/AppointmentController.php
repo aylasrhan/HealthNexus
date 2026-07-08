@@ -137,7 +137,22 @@ class AppointmentController extends Controller
             return response()->json($response);
         }
     }
+public function getPatientAppointmentsApi()
+{
+    $user = auth()->user(); // جلب المريض المسجل دخوله
+    
+    // جلب المواعيد مع تحميل بيانات الطبيب (Eager Loading)
+    $appointments = Appointment::with('doctor') 
+        ->where('appointment_for', $user->id)
+        ->where('status', 0) // المواعيد القادمة
+        ->orderBy('id', 'DESC')
+        ->get();
 
+    return response()->json([
+        'status' => 'success',
+        'upcoming_Appointment' => $appointments
+    ]);
+}
     public function pending_appointment(User $patient)
     {
         $doctors = User::join('doctors', 'users.id', '=', 'doctors.user_id')
@@ -182,7 +197,7 @@ class AppointmentController extends Controller
         if ($user->hasAccess('appointment.list')) {
             $user_id = Sentinel::getUser()->id;
             $role = $user->roles[0]->slug;
-            $today = Carbon::today()->format('Y/m/d');
+            $today = Carbon::today()->format('Y-m-d');
             $time = date('H:i:s');
             if ($role == 'doctor') {
                 $Upcoming_appointment = Appointment::where(function ($re) use ($user_id) {
