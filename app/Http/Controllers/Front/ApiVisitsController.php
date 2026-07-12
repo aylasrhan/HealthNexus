@@ -27,7 +27,7 @@ class ApiVisitsController extends Controller
 
     // 2. البحث عن المريض المرتبط بهذا المستخدم
     $patient = gnr_m_patients::where('user_id', $user->id)->first();
-
+   
     if (!$patient) {
         return $this->returnError("D01", "بيانات المريض غير موجودة لهذا المستخدم");
     }
