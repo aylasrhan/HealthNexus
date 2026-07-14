@@ -37,8 +37,9 @@ class ApiVisitsController extends Controller
     $now = Carbon::now()->subHour()->timestamp;
 $visits = cln_x_visits::with('gnr_m_clinics')
                 ->where('patient', '=', $patient->id)
-               ->where('d_start', '>=', $now)
-                ->orderBy('d_start', 'ASC')
+            //    ->where('d_start', '>=', $now)
+                // ->orderBy('d_start', 'ASC')
+                ->orderBy('d_start', 'DESC') // اعرضي الأحدث أولاً
                 ->get();
     if ($visits->count() == 0) {
         return $this->returnError("D01", "لا توجد زيارات حالياً");
