@@ -33,16 +33,22 @@ class ApiVisitsController extends Controller
     }
 
     // 3. جلب الزيارات الخاصة بهذا المريض
-    $visits = cln_x_visits::with('gnr_m_clinics')->where('patient', '=', $patient->id)->get();
-
+    // $visits = cln_x_visits::with('gnr_m_clinics')->where('patient', '=', $patient->id)->get();
+    $now = Carbon::now()->subHour()->timestamp;
+$visits = cln_x_visits::with('gnr_m_clinics')
+                ->where('patient', '=', $patient->id)
+               ->where('d_start', '>=', $now)
+                ->orderBy('d_start', 'ASC')
+                ->get();
     if ($visits->count() == 0) {
         return $this->returnError("D01", "لا توجد زيارات حالياً");
     }
 
     // 4. تنسيق التواريخ وإرجاع البيانات
     foreach ($visits as $visit) {
-        $newdate = Carbon::parse($visit->d_start)->format('Y-m-d الساعة: h:i A');
-        $visit->d_start = $newdate;
+        // $newdate = Carbon::parse($visit->d_start)->format('Y-m-d الساعة: h:i A');
+        $visit->d_start = Carbon::createFromTimestamp($visit->d_start)->format('Y-m-d \الساعة: h:i A');
+        // $visit->d_start = $newdate;
     }
 
     return $this->returnData("visits", $visits, "تم جلب البيانات بنجاح");
