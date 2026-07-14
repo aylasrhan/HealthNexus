@@ -9,7 +9,7 @@ use App\Traits\ResponseTrait;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-
+//explain
 class ApiVisitsController extends Controller
 {
     use ResponseTrait;
