@@ -75,10 +75,11 @@ class AppointmentRepository implements IAppointmentRepository
         $today = Carbon::today()->format('Y-m-d');
         return Appointment::with('doctor', 'timeSlot')
             ->where('appointment_for', $user_id)
-            ->whereDate('appointment_date', '>=', $today)
+            // ->whereDate('appointment_date', '>=', $today)
+            
             ->where('is_deleted', 0)
             ->orderBy('id', 'DESC')->get();
-            \Log::info("عدد المواعيد التي تم العثور عليها: " . $results->count());
+            // \Log::info("عدد المواعيد التي تم العثور عليها: " . $results->count());
     }
 
     public function doc_appoints()
