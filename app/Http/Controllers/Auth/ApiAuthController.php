@@ -26,46 +26,125 @@ class ApiAuthController extends Controller
     use ResponseTrait;
 
 
-    public function register(Request $request): JsonResponse
-    {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required',
-            'email' => 'required|email|unique:users',
-            'password' => 'required',
-            'c_password' => 'required|same:password',
-            'mother_name' => 'required',
-            'mobile' => 'required',
-            'birth_date' => 'required',
-            'sex' => 'required',
-            'blood' => 'required',
-            'p_city' => 'required',
-            'nationality' => 'required',
-            'address' => 'required',
-        ]);
+    // public function register(Request $request): JsonResponse
+    // {
+    //     $validator = Validator::make($request->all(), [
+    //         'name' => 'required',
+    //         'email' => 'required|email|unique:users',
+    //         'password' => 'required',
+    //         'c_password' => 'required|same:password',
+    //         'mother_name' => 'required',
+    //         'mobile' => 'required',
+    //         'birth_date' => 'required',
+    //         'sex' => 'required',
+    //         'blood' => 'required',
+    //         'p_city' => 'required',
+    //         'nationality' => 'required',
+    //         'address' => 'required',
+    //     ]);
 
-        if ($validator->fails()) {
-            return $this->returnError("V01", $validator->errors());
-        }
-        $newDate = Carbon::createFromFormat('m/d/Y', $request->birth_date)->format('Y-m-d');
-        $input = $request->all();
-        $input['password'] = bcrypt($input['password']);
-        $verificationCode = mt_rand(1000, 9999);//Str::random_int(4);
-        $input['verification_code'] = $verificationCode;
-        $input['roles_name'] = 'Patient';
-        $input['Status'] = 'مفعل';
-        try {
-            DB::transaction(function () use ($input, $newDate) {
-                $user = User::create([
-                    'name' => $input['name'],
-                    'email' => $input['email'],
-                    'password' => $input['password'],
-                    'verification_code' => $input['verification_code'],
-                    'roles_name' => $input['roles_name'],
-                    'Status' => $input['Status'],
-                ]);
+    //     if ($validator->fails()) {
+    //         return $this->returnError("V01", $validator->errors());
+    //     }
+    //     $newDate = Carbon::createFromFormat('m/d/Y', $request->birth_date)->format('Y-m-d');
+    //     $input = $request->all();
+    //     $input['password'] = bcrypt($input['password']);
+    //     $verificationCode = mt_rand(1000, 9999);//Str::random_int(4);
+    //     $input['verification_code'] = $verificationCode;
+    //     $input['roles_name'] = 'Patient';
+    //     $input['Status'] = 'مفعل';
+    //     try {
+    //         DB::transaction(function () use ($input, $newDate) {
+    //             $user = User::create([
+    //                 'name' => $input['name'],
+    //                 'email' => $input['email'],
+    //                 'password' => $input['password'],
+    //                 'verification_code' => $input['verification_code'],
+    //                 'roles_name' => $input['roles_name'],
+    //                 'Status' => $input['Status'],
+    //             ]);
 
-                $patient = gnr_m_patients::create([
+    //             $patient = gnr_m_patients::create([
 
+    //                 'f_name' => $input['name'],
+    //                 'mother_name' => $input['mother_name'],
+    //                 'mobile' => $input['mobile'],
+    //                 'birth_date' => $newDate,
+    //                 'sex' => $input['sex'],
+    //                 'blood' => $input['blood'],
+    //                 'p_city' => $input['p_city'],
+    //                 'nationality' => $input['nationality'],
+    //                 'address' => $input['address'],
+    //                 'user_id' => $user->id,
+    //             ]);
+    //         });
+    //         DB::commit();
+    //         $user = User::where('email', $input['email'])->first();
+    //         if ($request->phone != null) {
+    //             $user->phone = $input['phone'];
+    //             $user->save();
+    //         }
+    //         if ($request->date != null) {
+    //             $user->date = $input['date'];
+    //             $user->save();
+    //         }
+    //         $token = $user->createToken('Personal Access Token')->accessToken;
+    //         $this->sendMail($user, $input['verification_code']);
+    //         return $this->returnData("user_token", $token, 'registered successfully.,check your email to get verification code', "D00");
+    //     } catch (\Exception $ex) {
+    //         DB::rollback();
+    //         return $this->returnError("D01", $ex->getMessage());
+    //     }
+
+    // }
+   public function register(Request $request): JsonResponse
+{
+    $validator = Validator::make($request->all(), [
+        'name' => 'required',
+        'email' => 'required|email|unique:users',
+        'password' => 'required',
+        'c_password' => 'required|same:password',
+        'roles_name' => 'required|in:Patient,Doctor',
+        
+        // حقول المريض (مطلوبة فقط إذا كان الدور Patient)
+        'mother_name' => 'nullable|required_if:roles_name,Patient',
+        'mobile' => 'nullable',
+        'birth_date' => 'nullable|required_if:roles_name,Patient',
+        'sex' => 'nullable|required_if:roles_name,Patient',
+        'blood' => 'nullable|required_if:roles_name,Patient',
+        'p_city' => 'nullable|required_if:roles_name,Patient',
+        'nationality' => 'nullable|required_if:roles_name,Patient',
+        'address' => 'nullable|required_if:roles_name,Patient',
+        
+        // حقول الطبيب (مطلوبة فقط إذا كان الدور Doctor)
+        'specialization' => 'nullable|required_if:roles_name,Doctor',
+    ]);
+
+    if ($validator->fails()) {
+        return $this->returnError("V01", $validator->errors());
+    }
+
+    $input = $request->all();
+    $input['password'] = bcrypt($input['password']);
+    $input['verification_code'] = mt_rand(1000, 9999);
+    $input['Status'] = 'مفعل';
+
+    try {
+        DB::transaction(function () use ($input, $request) {
+            // إنشاء المستخدم
+            $user = User::create([
+                'name' => $input['name'],
+                'email' => $input['email'],
+                'password' => $input['password'],
+                'verification_code' => $input['verification_code'],
+                'roles_name' => $input['roles_name'],
+                'Status' => $input['Status'],
+            ]);
+
+            // إذا كان الدور مريض
+            if ($input['roles_name'] == 'Patient') {
+                $newDate = Carbon::createFromFormat('m/d/Y', $input['birth_date'])->format('Y-m-d');
+                gnr_m_patients::create([
                     'f_name' => $input['name'],
                     'mother_name' => $input['mother_name'],
                     'mobile' => $input['mobile'],
@@ -77,46 +156,75 @@ class ApiAuthController extends Controller
                     'address' => $input['address'],
                     'user_id' => $user->id,
                 ]);
-            });
-            DB::commit();
-            $user = User::where('email', $input['email'])->first();
-            if ($request->phone != null) {
-                $user->phone = $input['phone'];
-                $user->save();
+            } 
+            // إذا كان الدور طبيب
+            elseif ($input['roles_name'] == 'Doctor') {
+                \App\Models\back\doctors::create([
+                    'name_ar' => $input['name'],
+                    'specialization_ar' => $input['specialization'],
+                    'phone_number' => $input['mobile'] ?? null,
+                    'user_id' => $user->id,
+                    'act' => 1,
+                    'famous' => 0,
+                ]);
             }
-            if ($request->date != null) {
-                $user->date = $input['date'];
-                $user->save();
-            }
-            $token = $user->createToken('Personal Access Token')->accessToken;
-            $this->sendMail($user, $input['verification_code']);
-            return $this->returnData("user_token", $token, 'registered successfully.,check your email to get verification code', "D00");
-        } catch (\Exception $ex) {
-            DB::rollback();
-            return $this->returnError("D01", $ex->getMessage());
-        }
+        });
 
+        $user = User::where('email', $input['email'])->first();
+        $token = $user->createToken('Personal Access Token')->accessToken;
+        $this->sendMail($user, $input['verification_code']);
+
+        return $this->returnData("user_token", $token, 'Registered successfully, check your email.', "D00");
+    } catch (\Exception $ex) {
+        return $this->returnError("D01", $ex->getMessage());
     }
+}
 
+    // public function login(Request $request): JsonResponse
+    // {
+    //     \Log::info("الدور المستلم هو: " . $request->role); // هذا السطر سيحفظ المعلومة في ملف laravel.log
+    //     $validator = Validator::make($request->all(), [
+    //         'email' => 'required|email',
+    //         'password' => 'required',
+    //     ]);
+
+    //     if ($validator->fails()) {
+    //         return $this->returnError("V00", $validator->errors());
+    //     }
+    //     if (Auth::attempt(['email' => $request->email, 'password' => $request->password])) {
+    //         $user = Auth::user();
+    //         $token = $user->createToken('MyApp')->accessToken;
+    //         return $this->returnData("user_token", $token, 'User login successfully.', "A00");
+    //     } else {
+    //         return $this->returnError('A01', 'Email or Password not correct');
+    //     }
+    // }
     public function login(Request $request): JsonResponse
-    {
-        \Log::info("الدور المستلم هو: " . $request->role); // هذا السطر سيحفظ المعلومة في ملف laravel.log
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
-            'password' => 'required',
-        ]);
+{
+    $validator = Validator::make($request->all(), [
+        'email' => 'required|email',
+        'password' => 'required',
+    ]);
 
-        if ($validator->fails()) {
-            return $this->returnError("V00", $validator->errors());
-        }
-        if (Auth::attempt(['email' => $request->email, 'password' => $request->password])) {
-            $user = Auth::user();
-            $token = $user->createToken('MyApp')->accessToken;
-            return $this->returnData("user_token", $token, 'User login successfully.', "A00");
-        } else {
-            return $this->returnError('A01', 'Email or Password not correct');
-        }
+    if ($validator->fails()) {
+        return $this->returnError("V00", $validator->errors());
     }
+
+    if (Auth::attempt(['email' => $request->email, 'password' => $request->password])) {
+        $user = Auth::user();
+        $token = $user->createToken('MyApp')->accessToken;
+
+        // قمنا باستخدام 'roles_name' كما هو موجود في الداتابيز
+        $data = [
+            'user_token' => $token,
+            'roles_name' => $user->roles_name, 
+        ];
+
+        return $this->returnData("data", $data, 'User login successfully.', "A00");
+    } else {
+        return $this->returnError('A01', 'Email or Password not correct');
+    }
+}
 
    public function verify(Request $request): JsonResponse
 {
