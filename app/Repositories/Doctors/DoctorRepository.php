@@ -82,16 +82,22 @@ class DoctorRepository implements IDoctorRepository
         return [];
     }
 
-    public function search($key)
-    {
-        $query = doctors::query()->join('users', 'doctors.user_id', '=', 'users.id')->orderBy('users.id');
-        $columns = ['doctors.name_ar', 'specialization_ar'];
-        foreach ($columns as $column) {
-            $query->orWhere($column, 'LIKE', '%' . $key . '%');
-        }
-        return $query->get();
-    }
-
+    // public function search($key)
+    // {
+    //     $query = doctors::query()->join('users', 'doctors.user_id', '=', 'users.id')->orderBy('users.id');
+    //     $columns = ['doctors.name_ar', 'specialization_ar'];
+    //     foreach ($columns as $column) {
+    //         $query->orWhere($column, 'LIKE', '%' . $key . '%');
+    //     }
+    //     return $query->get();
+    // }
+public function search($key)
+{
+    // البحث المباشر في جدول الأطباء دون الحاجة لـ Join مع الـ users لتجنب مشاكل وتضارب البيانات
+    return doctors::where('name_ar', 'LIKE', '%' . $key . '%')
+                  ->orWhere('specialization_ar', 'LIKE', '%' . $key . '%')
+                  ->get();
+}
     public function destroy($doctors)
     {
         try {
