@@ -22,7 +22,7 @@ class Appointment extends Model
         'status',
         'is_deleted',
     ];
-
+// functions
     function patient()
     {
         return $this->hasOne(User::class, 'id', 'appointment_for');
