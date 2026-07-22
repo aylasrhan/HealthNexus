@@ -152,7 +152,8 @@ public function pat_appoints(): JsonResponse
             'id' => $appointment->id,
             'appointment_date' => $appointment->appointment_date,
             // جلب اسم الطبيب من العلاقة التي جلبتها في الـ Repository
-'doctor_name' => $appointment->doctor ? $appointment->doctor->name : 'طبيب غير محدد',            // جلب الوقت من العلاقة timeSlot إذا كان متاحاً
+//   'doctor_name' => $appointment->doctor ? $appointment->doctor->name : 'طبيب غير محدد',            // جلب الوقت من العلاقة timeSlot إذا كان متاحاً
+'doctor_name' => $appointment->doctor ? $appointment->doctor->name_ar : 'طبيب غير محدد',
 'time' => $appointment->time ? \Carbon\Carbon::parse($appointment->time)->format('H:i') : '--:--',        ];
     });
 
