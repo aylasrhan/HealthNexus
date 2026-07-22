@@ -27,10 +27,15 @@ class Appointment extends Model
     {
         return $this->hasOne(User::class, 'id', 'appointment_for');
     }
-    function doctor()
-    {
-        return $this->hasOne(User::class, 'id', 'appointment_with');
-    }
+public function doctor()
+{
+    // return $this->belongsTo(\App\Models\back\doctors::class, 'appointment_with', 'user_id');
+return $this->belongsTo(\App\Models\back\doctors::class, 'appointment_with', 'id');
+}
+    // function doctor()
+    // {
+    //     return $this->hasOne(User::class, 'id', 'appointment_with');
+    // }
     function timeSlot()
     {
         return $this->hasOne(DoctorAvailableSlot::class, 'id', 'available_slot');
