@@ -82,64 +82,143 @@ class AppointmentRepository implements IAppointmentRepository
             
     //         // \Log::info("عدد المواعيد التي تم العثور عليها: " . $results->count());
     // }
-    public function pat_appoints()
+   public function pat_appoints()
     {
         $user = auth()->user();
         if (!$user) {
             return response()->json(['error' => 'Unauthenticated'], 401);
         }
         $user_id = $user->id;
-        \Log::info("جاري جلب مواعيد المستخدم ID: " . $user_id);
         
         $today = Carbon::today()->format('Y-m-d');
         
-        // 1. جلب المواعيد وحفظها في متغير أولاً
-        $appointments = Appointment::with('doctor', 'timeSlot')
+        return Appointment::with('doctor', 'timeSlot')
             ->where('appointment_for', $user_id)
-            // ->whereDate('appointment_date', '>=', $today)
+            ->whereDate('appointment_date', '>=', $today) // جلب المواعيد القادمة وتاريخ اليوم
             ->where('is_deleted', 0)
             ->orderBy('id', 'DESC')
             ->get();
-
-        // 2. فحص اللوقات قبل الخروج من الدالة
-        foreach($appointments as $app) {
-            \Log::info("Appointment ID: {$app->id} | Doctor ID in appointment: {$app->appointment_with} | Doctor Name Found: " . optional($app->doctor)->name_ar);
-        }
-
-        \Log::info("عدد المواعيد التي تم العثور عليها: " . $appointments->count());
-
-        // 3. إرجاع النتائج نهائياً
-        return $appointments;
     }
+    // الشغال لحد28 الشهر
+    // public function pat_appoints()
+    // {
+    //     $user = auth()->user();
+    //     if (!$user) {
+    //         return response()->json(['error' => 'Unauthenticated'], 401);
+    //     }
+    //     $user_id = $user->id;
+    //     \Log::info("جاري جلب مواعيد المستخدم ID: " . $user_id);
+        
+    //     $today = Carbon::today()->format('Y-m-d');
+        
+    //     // 1. جلب المواعيد وحفظها في متغير أولاً
+    //     $appointments = Appointment::with('doctor', 'timeSlot')
+    //         ->where('appointment_for', $user_id)
+    //         // ->whereDate('appointment_date', '>=', $today)
+    //         ->where('is_deleted', 0)
+    //         ->orderBy('id', 'DESC')
+    //         ->get();
+
+    //     // 2. فحص اللوقات قبل الخروج من الدالة
+    //     foreach($appointments as $app) {
+    //         \Log::info("Appointment ID: {$app->id} | Doctor ID in appointment: {$app->appointment_with} | Doctor Name Found: " . optional($app->doctor)->name_ar);
+    //     }
+
+    //     \Log::info("عدد المواعيد التي تم العثور عليها: " . $appointments->count());
+
+    //     // 3. إرجاع النتائج نهائياً
+    //     return $appointments;
+    // }
+//old run
+    // public function doc_appoints()
+    // {
+    //     $user = auth()->user();
+    //     $user_id = $user->id;
+    //     $today = Carbon::today()->format('Y/m/d');
+    //     $doctor = doctors::where('user_id', $user_id)->first();
+    //     $doc_id = $doctor->id;
+    //     return Appointment::with('patient', 'timeSlot')
+    //         ->where('appointment_with', $user_id)
+    //         ->whereDate('appointment_date', '>', $today)
+    //         ->where('is_deleted', 0)
+    //         ->orderBy('id', 'DESC')->get();
+    // }
+
+    // public function doc_today_appoints()
+    // {
+    //     $user = auth()->user();
+    //     $user_id = $user->id;
+    //     $today = Carbon::today()->format('Y/m/d');
+    //     $doctor = doctors::where('user_id', $user_id)->first();
+    //     $doc_id = $doctor->id;
+    //     return Appointment::with('patient', 'timeSlot')
+    //         ->where('appointment_with', $user_id)
+    //         ->whereDate('appointment_date', '=', $today)
+    //         ->where('is_deleted', 0)
+    //         ->orderBy('id', 'DESC')->get();
+    // }
 
     public function doc_appoints()
     {
         $user = auth()->user();
-        $user_id = $user->id;
-        $today = Carbon::today()->format('Y/m/d');
-        $doctor = doctors::where('user_id', $user_id)->first();
-        $doc_id = $doctor->id;
+        
+        // 1. جلب بيانات الطبيب وحماية الكود من الانهيار إذا كان فارغاً
+        $doctor = \App\Models\back\doctors::where('user_id', $user->id)->first();
+        if (!$doctor) {
+            return []; // إرجاع مصفوفة فارغة بدلاً من الخطأ 500
+        }
+
+        // 2. توحيد صيغة التاريخ
+        $today = \Carbon\Carbon::today()->format('Y-m-d');
+        
         return Appointment::with('patient', 'timeSlot')
-            ->where('appointment_with', $user_id)
+            // 3. البحث باستخدام $doctor->id (الذي صلحناه سابقاً) بدلاً من user_id
+            ->where('appointment_with', $doctor->id)
             ->whereDate('appointment_date', '>', $today)
             ->where('is_deleted', 0)
             ->orderBy('id', 'DESC')->get();
     }
-
     public function doc_today_appoints()
     {
         $user = auth()->user();
-        $user_id = $user->id;
-        $today = Carbon::today()->format('Y/m/d');
-        $doctor = doctors::where('user_id', $user_id)->first();
-        $doc_id = $doctor->id;
-        return Appointment::with('patient', 'timeSlot')
-            ->where('appointment_with', $user_id)
+        
+        $doctor = \App\Models\back\doctors::where('user_id', $user->id)->first();
+        if (!$doctor) {
+            \Log::error("DEBUG: الحساب رقم " . $user->id . " غير مربوط بأي طبيب في الداتابيز!");
+            return [];
+        }
+
+        $today = \Carbon\Carbon::today()->format('Y-m-d');
+        
+        $appointments = Appointment::with('patient', 'timeSlot')
+            ->where('appointment_with', $doctor->id)
             ->whereDate('appointment_date', '=', $today)
             ->where('is_deleted', 0)
             ->orderBy('id', 'DESC')->get();
-    }
+            
+        // 🔴 هذا السطر سيكشف لنا السر!
+        \Log::info("DEBUG: الطبيب رقم: " . $doctor->id . " | يبحث عن مواعيد بتاريخ: " . $today . " | النتيجة: وجد " . $appointments->count() . " مواعيد");
 
+        return $appointments;
+    }
+// new
+    // public function doc_today_appoints()
+    // {
+    //     $user = auth()->user();
+        
+    //     $doctor = \App\Models\back\doctors::where('user_id', $user->id)->first();
+    //     if (!$doctor) {
+    //         return [];
+    //     }
+
+    //     $today = \Carbon\Carbon::today()->format('Y-m-d');
+        
+    //     return Appointment::with('patient', 'timeSlot')
+    //         ->where('appointment_with', $doctor->id)
+    //         ->whereDate('appointment_date', '=', $today) // '=' تعني مواعيد اليوم فقط
+    //         ->where('is_deleted', 0)
+    //         ->orderBy('id', 'DESC')->get();
+    // }
     public function pat_canceled_appoints()
     {
         $user = auth()->user();
