@@ -212,44 +212,93 @@ class AppointmentRepository implements IAppointmentRepository
 
     }
 
+    // public function store($input)
+    // {
+    //     $user = auth()->user();
+    //     try {
+    //         $date = $input['appointment_date'];
+    //         $newDate = Carbon::createFromFormat('m/d/Y', $date)->format('Y-m-d');
+    //         if ($user->roles_name == 'Patient') {
+    //             $id_doc = $input['appointment_with'];
+    //             $doctor = doctors::find($id_doc);
+    //             $apointment = Appointment::create([
+    //                 'appointment_for' => $user->id,
+    //                 'appointment_with' => $doctor->user_id,
+    //                 'appointment_date' => $newDate,
+    //                 'available_slot' => $input['available_slot'],
+    //             ]);
+    //         } elseif ($user->roles_name == 'Doctor') {
+    //             $apointment = Appointment::create([
+    //                 'appointment_for' => $input['appointment_for'],
+    //                 'appointment_with' => $user->id,
+    //                 'appointment_date' => $newDate,
+    //                 'available_slot' => $input['available_slot'],
+    //             ]);
+    //         } elseif ($user->roles_name == 'Reception') {
+    //             $id_doc = $input['appointment_with'];
+    //             $doctor = doctors::find($id_doc);
+    //             $apointment = Appointment::create([
+    //                 'appointment_for' => $input['appointment_for'],
+    //                 'appointment_with' => $doctor->user_id,
+    //                 'appointment_date' => $newDate,
+    //                 'available_slot' => $input['available_slot'],
+    //             ]);
+    //         }
+    //         return $apointment;
+    //     } catch (\Exception $ex) {
+    //         return $ex;
+    //     }
+    // }
+
     public function store($input)
     {
         $user = auth()->user();
         try {
             $date = $input['appointment_date'];
-            $newDate = Carbon::createFromFormat('m/d/Y', $date)->format('Y-m-d');
+            
+            // تحويل التاريخ بأمان
+            $newDate = \Carbon\Carbon::parse($date)->format('Y-m-d');
+            
+            // تجهيز الوقت بصيغة H:i:s
+            $time = isset($input['time']) ? $input['time'] : $input['available_slot'];
+            if (strlen($time) == 5) {
+                $time .= ':00'; 
+            }
+
+            $id_doc = $input['appointment_with'];
+
+            // 🔴 التعديل هنا: قمنا بحذف سطر 'available_slot' من أوامر الحفظ 
+            // لأن الداتابيز لديك ترفضه وتطلب عمود 'time' فقط
+            
             if ($user->roles_name == 'Patient') {
-                $id_doc = $input['appointment_with'];
-                $doctor = doctors::find($id_doc);
                 $apointment = Appointment::create([
                     'appointment_for' => $user->id,
-                    'appointment_with' => $doctor->user_id,
+                    'appointment_with' => $id_doc,
                     'appointment_date' => $newDate,
-                    'available_slot' => $input['available_slot'],
+                    'time' => $time, 
                 ]);
             } elseif ($user->roles_name == 'Doctor') {
                 $apointment = Appointment::create([
                     'appointment_for' => $input['appointment_for'],
                     'appointment_with' => $user->id,
                     'appointment_date' => $newDate,
-                    'available_slot' => $input['available_slot'],
+                    'time' => $time,
                 ]);
             } elseif ($user->roles_name == 'Reception') {
-                $id_doc = $input['appointment_with'];
-                $doctor = doctors::find($id_doc);
                 $apointment = Appointment::create([
                     'appointment_for' => $input['appointment_for'],
-                    'appointment_with' => $doctor->user_id,
+                    'appointment_with' => $id_doc,
                     'appointment_date' => $newDate,
-                    'available_slot' => $input['available_slot'],
+                    'time' => $time,
                 ]);
             }
             return $apointment;
+            
         } catch (\Exception $ex) {
-            return $ex;
+            \Log::error("فشل حفظ الموعد: " . $ex->getMessage());
+            throw $ex; 
         }
     }
-
     public function destroy($appointment)
     {
         $appoint = Appointment::find($appointment);

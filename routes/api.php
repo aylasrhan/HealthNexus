@@ -31,7 +31,7 @@ Route::get('cities', [ApiAuthController::class, 'getCities']);
 Route::get('clinics', [ApiAuthController::class, 'getClinics']);
     // Route::get('visits', [ApiVisitsController::class,'pat_visits']);
     Route::get('famous_doctors', [ApiPatientController::class, 'famous_doctors']);
-
+Route::get('/booked-times', [ApiAppointmentController::class, 'get_booked_times']);
 Route::middleware('auth:api')->group(function () {
     Route::post('email/verify', [ApiAuthController::class, 'verify']);
     Route::get('email/resend', [ApiAuthController::class, 'resend']);
