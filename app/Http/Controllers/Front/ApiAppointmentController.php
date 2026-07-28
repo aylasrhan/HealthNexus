@@ -54,39 +54,141 @@ class ApiAppointmentController extends Controller
         }
     }
 
-    public function appointment_store(Request $request): JsonResponse
-    {
-        $user = auth()->user();
-        $role = $user->roles_name;
-        $userId = $user->id;
-        if ($role == 'Patient') {
-            $validator = Validator::make($request->all(), [
-                'appointment_with' => 'required',
-                'appointment_date' => 'required',
-                'available_slot' => 'required',
-            ]);
-        } elseif ($role == 'Doctor') {
-            $validator = Validator::make($request->all(), [
-                'appointment_for' => 'required',
-                'appointment_date' => 'required',
-                'available_slot' => 'required',
-            ]);
+public function get_booked_times(Request $request): JsonResponse
+{
+    $doctorId = $request->doctor_id;
+    $date = $request->date;
+
+    // جلب المواعيد المؤكدة للطبيب في هذا اليوم
+    $appointments = \App\Models\back\Appointment::where('appointment_with', $doctorId)
+        ->where('appointment_date', $date)
+        ->where('is_deleted', 0)
+        ->where('status', '!=', 2)
+        ->get();
+
+    // استخراج الأوقات فقط وتنسيقها (H:i)
+    $bookedTimes = $appointments->map(function ($app) {
+        if($app->time) {
+            return \Carbon\Carbon::parse($app->time)->format('H:i');
         }
-        if ($validator->fails()) {
-            return $this->returnError("V00", $validator->errors());
-        }
-        $input = $request->all();
-        try {
-            $appointment = $this->AppointmentRepository->store($input);
-            if (!$appointment) {
-                return $this->returnError("D01", "Something went wrong..!");
-            } else {
-                return $this->returnSuccess("D00", "Appointment successfully");
-            }
-        } catch (Exception $e) {
-            return $this->returnError("D01", $e->getMessage());
-        }
+        return null;
+    })->filter()->toArray();
+
+    return response()->json([
+        'status' => 'success',
+        'booked_times' => array_values(array_unique($bookedTimes))
+    ], 200);
+}
+
+public function appointment_store(Request $request): JsonResponse
+{
+    $user = auth()->user();
+    $role = $user->roles_name;
+    $userId = $user->id;
+
+    if ($role == 'Patient') {
+        $validator = Validator::make($request->all(), [
+            'appointment_with' => 'required',
+            'appointment_date' => 'required',
+            'available_slot' => 'required',
+        ]);
+    } elseif ($role == 'Doctor') {
+        $validator = Validator::make($request->all(), [
+            'appointment_for' => 'required',
+            'appointment_date' => 'required',
+            'available_slot' => 'required',
+        ]);
     }
+
+    if ($validator->fails()) {
+        return $this->returnError("V00", $validator->errors());
+    }
+
+    // 🔴 === بداية الكود الجديد للمطابقة الذكية للوقت === 🔴
+    $doctorId = ($role == 'Patient') ? $request->appointment_with : $userId;
+
+    // 1. جلب جميع مواعيد الطبيب في هذا اليوم فقط (عددها سيكون قليل جداً)
+    $existingAppointments = \App\Models\back\Appointment::where('appointment_with', $doctorId)
+        ->where('appointment_date', $request->appointment_date)
+        ->get();
+
+    // 2. المطابقة باستخدام Carbon لتخطي اختلافات SQL
+    $isBooked = $existingAppointments->contains(function ($app) use ($request) {
+        if (!$app->time) return false;
+        
+        // توحيد الصيغة بشكل قاطع (H:i)
+        $storedTime = \Carbon\Carbon::parse($app->time)->format('H:i');
+        $requestedTime = \Carbon\Carbon::parse($request->available_slot)->format('H:i');
+        
+        // تحقق من التطابق، وأن الموعد غير محذوف وغير ملغى
+        // نستخدم is_null لتفادي المشاكل إذا كان العمود يقبل القيمة Null
+        $isNotDeleted = ($app->is_deleted == 0 || is_null($app->is_deleted));
+        $isNotCancelled = ($app->status != 2);
+
+        return ($storedTime == $requestedTime) && $isNotDeleted && $isNotCancelled;
+    });
+
+    if ($isBooked) {
+        return $this->returnError("V01", "عذراً، هذا الموعد تم حجزه مسبقاً، يرجى اختيار وقت آخر.");
+    }
+    // 🔴 === نهاية الكود الجديد === 🔴
+
+    $input = $request->all();
+    try {
+        $appointment = $this->AppointmentRepository->store($input);
+        if (!$appointment) {
+            return $this->returnError("D01", "Something went wrong..!");
+        } else {
+            return $this->returnSuccess("D00", "Appointment successfully");
+        }
+    } catch (\Exception $e) {
+        return $this->returnError("D01", $e->getMessage());
+    }
+}
+    // public function appointment_store(Request $request): JsonResponse
+    // {
+    //     $user = auth()->user();
+    //     $role = $user->roles_name;
+    //     $userId = $user->id;
+    //     if ($role == 'Patient') {
+    //         $validator = Validator::make($request->all(), [
+    //             'appointment_with' => 'required',
+    //             'appointment_date' => 'required',
+    //             'available_slot' => 'required',
+    //         ]);
+    //     } elseif ($role == 'Doctor') {
+    //         $validator = Validator::make($request->all(), [
+    //             'appointment_for' => 'required',
+    //             'appointment_date' => 'required',
+    //             'available_slot' => 'required',
+    //         ]);
+    //     }
+    //     if ($validator->fails()) {
+    //         return $this->returnError("V00", $validator->errors());
+    //     }
+    //     $isBooked = \App\Models\back\Appointment::where('appointment_with', $request->appointment_with)
+    //     ->where('appointment_date', $request->appointment_date)
+    //     ->where('time', $request->available_slot) // تأكد إذا كنت تستقبل الوقت باسم available_slot أو time
+    //     ->where('is_deleted', 0)
+    //     ->where('status', '!=', 2) // تجاهل المواعيد الملغاة (حسب أرقام الـ status عندك)
+    //     ->exists();
+
+    // if ($isBooked) {
+    //     // إذا كان الموعد موجود، نرجع رسالة خطأ واضحة للتطبيق
+    //     return $this->returnError("V01", "عذراً، هذا الموعد تم حجزه مسبقاً، يرجى اختيار وقت آخر.");
+    // }
+    //     $input = $request->all();
+    //     try {
+    //         $appointment = $this->AppointmentRepository->store($input);
+    //         if (!$appointment) {
+    //             return $this->returnError("D01", "Something went wrong..!");
+    //         } else {
+    //             return $this->returnSuccess("D00", "Appointment successfully");
+    //         }
+    //     } catch (Exception $e) {
+    //         return $this->returnError("D01", $e->getMessage());
+    //     }
+    // }
 
     public function appointment_update(Request $request): JsonResponse
     {
