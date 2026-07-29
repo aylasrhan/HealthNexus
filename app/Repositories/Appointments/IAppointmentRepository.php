@@ -36,5 +36,6 @@ interface IAppointmentRepository
     public function destroy($appointment);
 
     public function cancel_appoint($appointment);
+    public function accept_appoint($appointmentId);
 
 }

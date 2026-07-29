@@ -29,7 +29,8 @@ Route::post('areas', [ApiPatientController::class, 'areas']);
 Route::get('get-nationalities', [ApiAuthController::class, 'getNationalities']);
 Route::get('cities', [ApiAuthController::class, 'getCities']);
 Route::get('clinics', [ApiAuthController::class, 'getClinics']);
-    // Route::get('visits', [ApiVisitsController::class,'pat_visits']);
+Route::post('accept-appointment', [ApiAppointmentController::class, 'accept_appointment']);
+Route::post('reject-appointment', [ApiAppointmentController::class, 'reject_appointment']);    // Route::get('visits', [ApiVisitsController::class,'pat_visits']);
     Route::get('famous_doctors', [ApiPatientController::class, 'famous_doctors']);
 Route::get('/booked-times', [ApiAppointmentController::class, 'get_booked_times']);
 Route::middleware('auth:api')->group(function () {

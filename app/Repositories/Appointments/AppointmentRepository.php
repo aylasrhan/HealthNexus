@@ -82,7 +82,7 @@ class AppointmentRepository implements IAppointmentRepository
             
     //         // \Log::info("عدد المواعيد التي تم العثور عليها: " . $results->count());
     // }
-   public function pat_appoints()
+    public function pat_appoints()
     {
         $user = auth()->user();
         if (!$user) {
@@ -94,11 +94,30 @@ class AppointmentRepository implements IAppointmentRepository
         
         return Appointment::with('doctor', 'timeSlot')
             ->where('appointment_for', $user_id)
-            ->whereDate('appointment_date', '>=', $today) // جلب المواعيد القادمة وتاريخ اليوم
+            ->whereDate('appointment_date', '>=', $today)
             ->where('is_deleted', 0)
+            // 🔴 التعديل هنا: جلب المواعيد المعلقة (0) والمؤكدة (1) فقط!
+            ->whereIn('status', [0, 1]) 
             ->orderBy('id', 'DESC')
             ->get();
     }
+//    public function pat_appoints()
+//     {
+//         $user = auth()->user();
+//         if (!$user) {
+//             return response()->json(['error' => 'Unauthenticated'], 401);
+//         }
+//         $user_id = $user->id;
+        
+//         $today = Carbon::today()->format('Y-m-d');
+        
+//         return Appointment::with('doctor', 'timeSlot')
+//             ->where('appointment_for', $user_id)
+//             ->whereDate('appointment_date', '>=', $today) // جلب المواعيد القادمة وتاريخ اليوم
+//             ->where('is_deleted', 0)
+//             ->orderBy('id', 'DESC')
+//             ->get();
+//     }
     // الشغال لحد28 الشهر
     // public function pat_appoints()
     // {
@@ -389,6 +408,19 @@ class AppointmentRepository implements IAppointmentRepository
     {
         $appoint = Appointment::find($appointment);
         $appoint->status = 2;
+        $appoint->save();
+        return $appoint;
+    }
+// 29 الشهر
+
+public function accept_appoint($appointmentId)
+    {
+        $appoint = Appointment::find($appointmentId);
+        if (!$appoint) {
+            return null;
+        }
+        // تغيير حالة الموعد إلى مقبول (1)
+        $appoint->status = 1; 
         $appoint->save();
         return $appoint;
     }
