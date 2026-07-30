@@ -176,27 +176,47 @@ class AppointmentRepository implements IAppointmentRepository
     //         ->where('is_deleted', 0)
     //         ->orderBy('id', 'DESC')->get();
     // }
-
     public function doc_appoints()
-    {
-        $user = auth()->user();
-        
-        // 1. جلب بيانات الطبيب وحماية الكود من الانهيار إذا كان فارغاً
-        $doctor = \App\Models\back\doctors::where('user_id', $user->id)->first();
-        if (!$doctor) {
-            return []; // إرجاع مصفوفة فارغة بدلاً من الخطأ 500
-        }
-
-        // 2. توحيد صيغة التاريخ
-        $today = \Carbon\Carbon::today()->format('Y-m-d');
-        
-        return Appointment::with('patient', 'timeSlot')
-            // 3. البحث باستخدام $doctor->id (الذي صلحناه سابقاً) بدلاً من user_id
-            ->where('appointment_with', $doctor->id)
-            ->whereDate('appointment_date', '>', $today)
-            ->where('is_deleted', 0)
-            ->orderBy('id', 'DESC')->get();
+{
+    $user = auth()->user();
+    
+    // استخدام اسم الموديل الصحيح الذي اكتشفناه
+    $doctor = \App\Models\back\doctors::where('user_id', $user->id)->first();
+    if (!$doctor) {
+        return [];
     }
+    
+    // جلب كل المواعيد الخاصة بالطبيب، وترتيبها من الأقرب للأبعد
+    $appointments = Appointment::with('patient', 'timeSlot')
+        ->where('appointment_with', $doctor->id)
+        ->where('is_deleted', 0)
+        ->orderBy('appointment_date', 'ASC')
+        ->orderBy('time', 'ASC')
+        ->get();
+        
+    return $appointments;
+}
+// شغالة 30
+    // public function doc_appoints()
+    // {
+    //     $user = auth()->user();
+        
+    //     // 1. جلب بيانات الطبيب وحماية الكود من الانهيار إذا كان فارغاً
+    //     $doctor = \App\Models\back\doctors::where('user_id', $user->id)->first();
+    //     if (!$doctor) {
+    //         return []; // إرجاع مصفوفة فارغة بدلاً من الخطأ 500
+    //     }
+
+    //     // 2. توحيد صيغة التاريخ
+    //     $today = \Carbon\Carbon::today()->format('Y-m-d');
+        
+    //     return Appointment::with('patient', 'timeSlot')
+    //         // 3. البحث باستخدام $doctor->id (الذي صلحناه سابقاً) بدلاً من user_id
+    //         ->where('appointment_with', $doctor->id)
+    //         ->whereDate('appointment_date', '>', $today)
+    //         ->where('is_deleted', 0)
+    //         ->orderBy('id', 'DESC')->get();
+    // }
     public function doc_today_appoints()
     {
         $user = auth()->user();
@@ -220,6 +240,7 @@ class AppointmentRepository implements IAppointmentRepository
 
         return $appointments;
     }
+    
 // new
     // public function doc_today_appoints()
     // {
@@ -413,15 +434,73 @@ class AppointmentRepository implements IAppointmentRepository
     }
 // 29 الشهر
 
+
+
+// public function accept_appoint($appointmentId)
+// {
+//     $appoint = Appointment::find($appointmentId);
+//     if (!$appoint) {
+//         return null;
+//     }
+
+//     $appoint->status = 1; 
+//     $appoint->save();
+
+//     $patientProfile = \App\Models\back\gnr_m_patients::where('user_id', $appoint->appointment_for)->first();
+//     $realPatientId = $patientProfile ? $patientProfile->id : $appoint->appointment_for;
+
+//     $visit = new \App\Models\back\cln_x_visits();
+//     $visit->timestamps = false; 
+//     $visit->patient = $realPatientId; 
+//     $visit->clinic = $appoint->clinic_id ?? 1; 
+    
+//     // 🔴 الحل السحري هنا: تحويل التاريخ والوقت إلى Timestamp
+//     $time = $appoint->time ?? $appoint->available_slot ?? '00:00:00';
+//     $dateTimeString = $appoint->appointment_date . ' ' . $time;
+//     $visit->d_start = strtotime($dateTimeString); 
+    
+//     $visit->status = 0; 
+//     $visit->type = 1; 
+
+//     $visit->save(); 
+
+//     return $appoint;
+// }
 public function accept_appoint($appointmentId)
-    {
-        $appoint = Appointment::find($appointmentId);
-        if (!$appoint) {
-            return null;
-        }
-        // تغيير حالة الموعد إلى مقبول (1)
-        $appoint->status = 1; 
-        $appoint->save();
-        return $appoint;
+{
+    // 1. جلب الموعد (هنا لارافل سيتعرف على الموديل تلقائياً)
+    $appoint = Appointment::find($appointmentId);
+    if (!$appoint) {
+        return null;
     }
+
+    $appoint->status = 1; 
+    $appoint->save();
+
+    // 2. جلب رقم المريض الحقيقي
+    $patientProfile = \App\Models\back\gnr_m_patients::where('user_id', $appoint->appointment_for)->first();
+    $realPatientId = $patientProfile ? $patientProfile->id : $appoint->appointment_for;
+
+    // 3. جلب بيانات الطبيب لمعرفة العيادة
+    $doctor = \App\Models\back\doctors::find($appoint->appointment_with);
+    
+    // 4. تحديد العيادة (رقم عيادة الطبيب الحقيقية)
+    $clinicId = $appoint->clinic_id ?? ($doctor->clinic ?? ($doctor->clinic_id ?? 1));
+
+    // 5. إنشاء الزيارة
+    $visit = new \App\Models\back\cln_x_visits();
+    $visit->timestamps = false; 
+    $visit->patient = $realPatientId; 
+    $visit->clinic = $clinicId; // 👈 هنا سيتم حفظ العيادة الحقيقية
+    
+    $time = $appoint->time ?? $appoint->available_slot ?? '00:00:00';
+    $dateTimeString = $appoint->appointment_date . ' ' . $time;
+    $visit->d_start = strtotime($dateTimeString); 
+    
+    $visit->status = 0; 
+    $visit->type = 1; 
+    $visit->save(); 
+
+    return $appoint;
+}
 }

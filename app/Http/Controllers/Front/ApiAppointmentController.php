@@ -428,26 +428,26 @@ public function pat_appoints(): JsonResponse
     }
 
 // 29 الشهر
-public function accept_appointment(Request $request, \App\Repositories\Appointments\AppointmentRepository $appointmentRepo)
-    {
-        $appointmentId = $request->input('appointment_id');
+// public function accept_appointment(Request $request, \App\Repositories\Appointments\AppointmentRepository $appointmentRepo)
+//     {
+//         $appointmentId = $request->input('appointment_id');
         
-        // استخدمنا المتغير الجديد $appointmentRepo بدلاً من $this
-        $updatedAppointment = $appointmentRepo->accept_appoint($appointmentId);
+//         // استخدمنا المتغير الجديد $appointmentRepo بدلاً من $this
+//         $updatedAppointment = $appointmentRepo->accept_appoint($appointmentId);
 
-        if (!$updatedAppointment) {
-            return response()->json([
-                'success' => false,
-                'msg' => 'الموعد غير موجود'
-            ], 404);
-        }
+//         if (!$updatedAppointment) {
+//             return response()->json([
+//                 'success' => false,
+//                 'msg' => 'الموعد غير موجود'
+//             ], 404);
+//         }
 
-        return response()->json([
-            'success' => true,
-            'msg' => 'تم قبول الموعد بنجاح',
-            'data' => $updatedAppointment
-        ], 200);
-    }
+//         return response()->json([
+//             'success' => true,
+//             'msg' => 'تم قبول الموعد بنجاح',
+//             'data' => $updatedAppointment
+//         ], 200);
+//     }
 public function reject_appointment(Request $request, \App\Repositories\Appointments\AppointmentRepository $appointmentRepo)
     {
         $appointmentId = $request->input('appointment_id');
@@ -468,4 +468,64 @@ public function reject_appointment(Request $request, \App\Repositories\Appointme
             'data' => $updatedAppointment
         ], 200);
     }
+public function accept_appointment(\Illuminate\Http\Request $request, \App\Repositories\Appointments\AppointmentRepository $appointmentRepo)
+{
+    $appointmentId = $request->input('appointment_id');
+    
+    // إرسال الطلب إلى ملف الـ Repository
+    $updatedAppointment = $appointmentRepo->accept_appoint($appointmentId);
+
+    if (!$updatedAppointment) {
+        return response()->json([
+            'success' => false,
+            'msg' => 'الموعد غير موجود'
+        ], 404);
+    }
+
+    return response()->json([
+        'success' => true,
+        'msg' => 'تم قبول الموعد بنجاح',
+        'data' => $updatedAppointment
+    ], 200);
+}
+//     public function doc_appoints()
+// {
+//     // 1. استخدام DB مباشرة للبحث في جدول الأطباء وتجاوز مشكلة اسم الموديل
+//     $doctor = \Illuminate\Support\Facades\DB::table('gnr_m_doctors')
+//                 ->where('user_id', auth()->user()->id)
+//                 ->first();
+    
+//     if(!$doctor){
+//         return response()->json([
+//             'success' => false, 
+//             'error' => 'D01', 
+//             'msg' => 'لم يتم العثور على ملف الطبيب'
+//         ]);
+//     }
+
+//     // 2. جلب كل المواعيد الخاصة بهذا الطبيب
+//     $appointments = \App\Models\Front\Appointment::with('patient')
+//         ->where('appointment_with', $doctor->id)
+//         ->orderBy('appointment_date', 'asc') // ترتيب حسب التاريخ
+//         ->orderBy('time', 'asc')             // ثم الترتيب حسب الوقت
+//         ->get();
+
+//     // 3. إرسال البيانات
+//     return response()->json([
+//         'success' => true,
+//         'error' => 'D00',
+//         'Appointments' => $appointments,
+//         'msg' => ''
+//     ]);
+// }
+public function doc_appoints(): \Illuminate\Http\JsonResponse
+{
+    $appointments = $this->AppointmentRepository->doc_appoints();
+    
+    if (!$appointments || count($appointments) == 0) {
+        return $this->returnError("D01", "There are no appointments..");
+    } else {
+        return $this->returnData("Appointments", $appointments, "", "D00");
+    }
+}
 }
