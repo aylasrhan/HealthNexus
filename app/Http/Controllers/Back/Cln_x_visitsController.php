@@ -12,6 +12,8 @@ use Illuminate\Database\Query\JoinClause;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
 
 class Cln_x_visitsController extends Controller
 {
@@ -70,12 +72,12 @@ class Cln_x_visitsController extends Controller
                 $join->on('gnr_m_patients.id', '=', 'cln_x_visits.patient');
             })
             ->selectRaw('cln_x_visits.id,DATE_FORMAT(FROM_UNIXTIME(cln_x_visits.d_start), "%Y-%m-%d") AS date
-            ,gnr_m_patients.f_name,cln_x_visits.clinic,cln_x_visits.note,cln_x_visits.price')
+            ,gnr_m_patients.f_name,cln_x_visits.clinic,cln_x_visits.note'.(Schema::hasColumn('cln_x_visits', 'price') ? ',cln_x_visits.price' : ''))
             ->distinct('cln_x_visits.id')
 
             ->paginate(30);
 
-        $price = $visits->sum('price');
+        $price = Schema::hasColumn('cln_x_visits', 'price') ? $visits->sum('price') : null;
 
         return view('back.visits.show', compact('visits','price'));
     }
@@ -96,7 +98,7 @@ class Cln_x_visitsController extends Controller
             'user_id' => ['required', 'integer', 'exists:gnr_m_patients,id'],
             'clinic' => ['required', 'integer', 'exists:gnr_m_clinics,id'],
             'note' => ['nullable', 'string', 'max:2000'],
-            'price' => ['nullable', 'numeric', 'min:0'],
+            'price' => [Rule::excludeIf(!Schema::hasColumn('cln_x_visits', 'price')), 'nullable', 'numeric', 'min:0'],
         ]);
         $patient = gnr_m_patients::findOrFail($validated['user_id']);
         $this->authorize('createForPatient', [cln_x_visits::class, $patient]);
@@ -104,8 +106,9 @@ class Cln_x_visitsController extends Controller
         try {
             DB::transaction(function () use ($request) {
                 if($request->clinic != null){
-                    DB::insert('insert into cln_x_visits (patient, clinic,type,status,note,price,d_start)
-                values (?,?,?,?,?,?,?)', [$request->user_id, $request->clinic, 1, 0, $request->note,$request->price,time()]);
+                    $data = ['patient' => $request->user_id, 'clinic' => $request->clinic, 'type' => 1, 'status' => 0, 'note' => $request->note, 'd_start' => time()];
+                    if (Schema::hasColumn('cln_x_visits', 'price')) $data['price'] = $request->price;
+                    DB::table('cln_x_visits')->insert($data);
                 }
 
             });
@@ -138,15 +141,14 @@ class Cln_x_visitsController extends Controller
         $request->validate([
             'clinic' => ['required', 'integer', 'exists:gnr_m_clinics,id'],
             'note' => ['nullable', 'string', 'max:2000'],
-            'price' => ['nullable', 'numeric', 'min:0'],
+            'price' => [Rule::excludeIf(!Schema::hasColumn('cln_x_visits', 'price')), 'nullable', 'numeric', 'min:0'],
         ]);
         try {
             DB::transaction(function () use ($id,$request) {
                 if($request->clinic != null){
-                    DB::table('cln_x_visits')->where('id', $id)->update([
-                            'clinic' => $request->clinic,
-                            'note'=>$request->note,
-                            'price'=>$request->price]);
+                    $data = ['clinic' => $request->clinic, 'note' => $request->note];
+                    if (Schema::hasColumn('cln_x_visits', 'price')) $data['price'] = $request->price;
+                    DB::table('cln_x_visits')->where('id', $id)->update($data);
                    }
 
             });

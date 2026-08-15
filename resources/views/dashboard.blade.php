@@ -38,6 +38,11 @@
         </article>
     </section>
 
+    <div class="hn-grid hn-dashboard-primary">
+        <x-dashboard-calendar :calendar="$calendar" title="تقويم المركز" :url="url('appointments')" />
+        <x-dashboard-tasks :tasks="$tasks" title="التنبيهات والمهام" />
+    </div>
+
     <div class="hn-grid">
         <section class="hn-panel">
             <div class="hn-panel-header"><div><h2 class="hn-panel-title">نشاط المواعيد</h2><p class="hn-panel-subtitle">عدد المواعيد خلال آخر 7 أيام</p></div><a href="{{ url('appointments') }}" class="tx-13">عرض الكل</a></div>
@@ -57,6 +62,13 @@
                 <a class="hn-quick-action" href="{{ route('patients.index') }}"><i class="fe fe-calendar"></i><span><strong>إنشاء موعد</strong><small class="d-block text-muted">ابدأ باختيار ملف المريض</small></span></a>
                 <a class="hn-quick-action" href="{{ route('doctors.index') }}"><i class="fe fe-search"></i><span><strong>البحث عن طبيب</strong><small class="d-block text-muted">استعراض الأطباء والدوام</small></span></a>
                 <a class="hn-quick-action" href="{{ route('report.index') }}"><i class="fe fe-bar-chart-2"></i><span><strong>فتح التقارير</strong><small class="d-block text-muted">مراجعة مؤشرات المركز</small></span></a>
+                <a class="hn-quick-action" href="{{ route('medical-files.index') }}"><i class="fe fe-file-text"></i><span><strong>الملفات الطبية</strong><small class="d-block text-muted">البحث في ملفات الزيارات</small></span></a>
+                <a class="hn-quick-action" href="{{ route('questions.index') }}"><i class="fe fe-message-circle"></i><span><strong>أسئلة المرضى</strong><small class="d-block text-muted">{{ number_format($operations['unanswered_questions']) }} دون إجابة</small></span></a>
+                <a class="hn-quick-action" href="{{ route('analytics.diseases') }}"><i class="fe fe-map"></i><span><strong>تحليل الأمراض</strong><small class="d-block text-muted">الخريطة والمؤشرات الجغرافية</small></span></a>
+                @if($user->hasSystemRole('super_admin'))
+                    <a class="hn-quick-action" href="{{ route('ads.index') }}"><i class="fe fe-volume-2"></i><span><strong>إدارة الإعلانات</strong><small class="d-block text-muted">{{ number_format($operations['active_ads']) }} إعلان نشط</small></span></a>
+                    @if($featureAvailability['doctor_ratings'])<a class="hn-quick-action" href="{{ route('review.index') }}"><i class="fe fe-star"></i><span><strong>تقييمات الأطباء</strong><small class="d-block text-muted">متابعة رضا المرضى</small></span></a>@endif
+                @endif
             </div>
         </section>
     </div>

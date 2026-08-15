@@ -17,10 +17,16 @@ class Gnr_m_patientsInfoController extends Controller
 
     public function edit(Request $request)
     {
+        if ($request->user()->hasSystemRole('doctor') && $request->filled('visit')) {
+            return redirect()->route('consultations.edit', $request->integer('visit'));
+        }
         $id = $request['patients_info'];
         $visit = $request['visit'];
 
         $info = gnr_m_patients_medical_info::where('patient','=',$id)->first();
+        if (!$info) {
+            return redirect()->route('services.show', $visit)->with('error', 'لا توجد بيانات نمو مسجلة لهذا المريض.');
+        }
 
         return view('back.info.edit',compact('info','visit'));
     }

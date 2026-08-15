@@ -47,6 +47,10 @@ class AppointmentRepository implements IAppointmentRepository
             $query->where('status', (int) $request->query('status'));
         }
 
+        if ($request->filled('date')) {
+            $query->whereDate('appointment_date', $request->query('date'));
+        }
+
         if ($request->query('period') === 'today') {
             $query->whereDate('appointment_date', Carbon::today());
         } elseif ($request->query('period') === 'upcoming') {
@@ -471,43 +475,43 @@ class AppointmentRepository implements IAppointmentRepository
 // }
 public function accept_appoint($appointmentId)
 {
-    // 1. جلب الموعد (هنا لارافل سيتعرف على الموديل تلقائياً)
-    $appoint = Appointment::find($appointmentId);
-    if (!$appoint) {
-        return null;
-    }
+    return DB::transaction(function () use ($appointmentId) {
+        $appoint = Appointment::query()->lockForUpdate()->find($appointmentId);
+        if (!$appoint) {
+            return null;
+        }
 
-    if ((int) $appoint->status === 1) {
+        $patientProfile = \App\Models\back\gnr_m_patients::where('user_id', $appoint->appointment_for)->firstOrFail();
+        $doctor = \App\Models\back\doctors::query()
+            ->whereKey($appoint->appointment_with)
+            ->orWhere('user_id', $appoint->appointment_with)
+            ->firstOrFail();
+        $clinicId = (int) $doctor->subgrp;
+        if ($clinicId <= 0) {
+            throw new \RuntimeException('لا توجد عيادة مرتبطة بالطبيب.');
+        }
+
+        $visitTimestamp = strtotime($appoint->appointment_date.' '.($appoint->time ?: '00:00:00'));
+        $visit = \App\Models\back\cln_x_visits::query()
+            ->where('patient', $patientProfile->id)
+            ->where('d_start', $visitTimestamp)
+            ->lockForUpdate()
+            ->first();
+        if (!$visit) {
+            $visit = new \App\Models\back\cln_x_visits();
+            $visit->timestamps = false;
+            $visit->patient = $patientProfile->id;
+            $visit->clinic = $clinicId;
+            $visit->type = 1;
+            $visit->status = 0;
+            $visit->d_start = $visitTimestamp;
+            $visit->save();
+        }
+
+        $appoint->status = 1;
+        $appoint->save();
+
         return $appoint;
-    }
-
-    $appoint->status = 1;
-    $appoint->save();
-
-    // 2. جلب رقم المريض الحقيقي
-    $patientProfile = \App\Models\back\gnr_m_patients::where('user_id', $appoint->appointment_for)->first();
-    $realPatientId = $patientProfile ? $patientProfile->id : $appoint->appointment_for;
-
-    // 3. جلب بيانات الطبيب لمعرفة العيادة
-    $doctor = \App\Models\back\doctors::find($appoint->appointment_with);
-    
-    // 4. تحديد العيادة (رقم عيادة الطبيب الحقيقية)
-    $clinicId = $appoint->clinic_id ?? ($doctor->clinic ?? ($doctor->clinic_id ?? 1));
-
-    // 5. إنشاء الزيارة
-    $visit = new \App\Models\back\cln_x_visits();
-    $visit->timestamps = false; 
-    $visit->patient = $realPatientId; 
-    $visit->clinic = $clinicId; // 👈 هنا سيتم حفظ العيادة الحقيقية
-    
-    $time = $appoint->time ?? $appoint->available_slot ?? '00:00:00';
-    $dateTimeString = $appoint->appointment_date . ' ' . $time;
-    $visit->d_start = strtotime($dateTimeString); 
-    
-    $visit->status = 0; 
-    $visit->type = 1; 
-    $visit->save(); 
-
-    return $appoint;
+    });
 }
 }

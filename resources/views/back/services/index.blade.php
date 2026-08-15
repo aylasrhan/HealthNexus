@@ -57,7 +57,7 @@
                     <div class="col-sm-1 col-md-12">
                         <div class="row row-sm">
                             <div style="left: 15px;" class="col-xl-1">
-                                <a href="{{ route('services.edit',['service'=>$patientId,'clinic' =>$clinic,'visit'=>$visitID]) }}" class="btn btn-sm btn-info"
+                                <a href="{{ auth()->user()->hasSystemRole('doctor') ? route('consultations.edit', $visitID) : route('services.edit',['service'=>$patientId,'clinic' =>$clinic,'visit'=>$visitID]) }}" class="btn btn-sm btn-info"
                                    title="تعديل"><i class="las la-pen"></i></a>
                             </div>
                             <div style="right: -47px;" class="col-xl-11">
@@ -125,7 +125,7 @@
                     <div class="col-sm-1 col-md-12">
                         <div class="row row-sm">
                             <div style="left: 15px;" class="col-xl-1">
-                                <a href="{{ route('medical.edit',['medical'=>$patientId,'visit'=>$visitID]) }}" class="btn btn-sm btn-info"
+                                <a href="{{ auth()->user()->hasSystemRole('doctor') ? route('consultations.edit', $visitID) : route('medical.edit',['medical'=>$patientId,'visit'=>$visitID]) }}" class="btn btn-sm btn-info"
                                    title="تعديل"><i class="las la-pen"></i></a>
                             </div>
                             <div style="right: -47px;" class="col-xl-11">
@@ -246,7 +246,7 @@
                     <div class="col-sm-1 col-md-12">
                         <div class="row row-sm">
                             <div style="left: 15px;" class="col-xl-1">
-                                <a href="{{ route('com.edit',['com'=>$patientId,'visit'=>$visitID]) }}" class="btn btn-sm btn-info"
+                                <a href="{{ auth()->user()->hasSystemRole('doctor') ? route('consultations.edit', $visitID) : route('com.edit',['com'=>$patientId,'visit'=>$visitID]) }}" class="btn btn-sm btn-info"
                                    title="تعديل"><i class="las la-pen"></i></a>
                             </div>
                             <div style="right: -47px;" class="col-xl-11">
@@ -312,7 +312,7 @@
                     <div class="col-sm-1 col-md-12">
                         <div class="row row-sm">
                             <div style="left: 15px;" class="col-xl-1">
-                                <a href="{{ route('str.edit',['str'=>$patientId,'visit'=>$visitID]) }}" class="btn btn-sm btn-info"
+                                <a href="{{ auth()->user()->hasSystemRole('doctor') ? route('consultations.edit', $visitID) : route('str.edit',['str'=>$patientId,'visit'=>$visitID]) }}" class="btn btn-sm btn-info"
                                    title="تعديل"><i class="las la-pen"></i></a>
                             </div>
                             <div style="right: -47px;" class="col-xl-11">
@@ -379,7 +379,7 @@
                     <div class="col-sm-1 col-md-12">
                         <div class="row row-sm">
                             <div style="left: 15px;" class="col-xl-1">
-                                <a href="{{ route('cln.edit',['cln'=>$patientId,'visit'=>$visitID]) }}" class="btn btn-sm btn-info"
+                                <a href="{{ auth()->user()->hasSystemRole('doctor') ? route('consultations.edit', $visitID) : route('cln.edit',['cln'=>$patientId,'visit'=>$visitID]) }}" class="btn btn-sm btn-info"
                                    title="تعديل"><i class="las la-pen"></i></a>
                             </div>
                             <div style="right: -47px;" class="col-xl-11">
@@ -444,7 +444,7 @@
                     <div class="col-sm-1 col-md-12">
                         <div class="row row-sm">
                             <div style="left: 15px;" class="col-xl-1">
-                                <a href="{{ route('dia.edit',['dium'=>$patientId,'visit'=>$visitID]) }}" class="btn btn-sm btn-info"
+                                <a href="{{ auth()->user()->hasSystemRole('doctor') ? route('consultations.edit', $visitID) : route('dia.edit',['dium'=>$patientId,'visit'=>$visitID]) }}" class="btn btn-sm btn-info"
                                    title="تعديل"><i class="las la-pen"></i></a>
                             </div>
                             <div style="right: -47px;" class="col-xl-11">
@@ -539,7 +539,7 @@
                     <div class="col-sm-1 col-md-12">
                         <div class="row row-sm">
                             <div style="left: 15px;" class="col-xl-1">
-                                <a href="{{ route('note.edit',['note'=>$patientId,'visit'=>$visitID]) }}" class="btn btn-sm btn-info"
+                                <a href="{{ auth()->user()->hasSystemRole('doctor') ? route('consultations.edit', $visitID) : route('note.edit',['note'=>$patientId,'visit'=>$visitID]) }}" class="btn btn-sm btn-info"
                                    title="تعديل"><i class="las la-pen"></i></a>
                             </div>
                             <div style="right: -47px;" class="col-xl-11">
@@ -606,7 +606,7 @@
                     <div class="col-sm-1 col-md-12">
                         <div class="row row-sm">
                             <div style="left: 15px;" class="col-xl-1">
-                                <a href="{{ route('patients_info.edit',['patients_info'=>$patientId,'visit'=>$visitID]) }}" class="btn btn-sm btn-info"
+                                <a href="{{ auth()->user()->hasSystemRole('doctor') ? route('consultations.edit', $visitID) : route('patients_info.edit',['patients_info'=>$patientId,'visit'=>$visitID]) }}" class="btn btn-sm btn-info"
                                    title="تعديل"><i class="las la-pen"></i></a>
                             </div>
                             <div style="right: -47px;" class="col-xl-11">
