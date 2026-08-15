@@ -18,7 +18,7 @@ class VisitPolicy
     {
         return $this->isStaff($user)
             || (int) $visit->patient()->value('user_id') === (int) $user->id
-            || $this->doctorIsAssigned($user, (int) $visit->patient);
+            || $this->doctorIsAssigned($user, (int) $visit->patient, $visit);
     }
 
     public function createForPatient(User $user, gnr_m_patients $patient): bool
@@ -28,12 +28,12 @@ class VisitPolicy
 
     public function update(User $user, cln_x_visits $visit): bool
     {
-        return $this->isStaff($user) || $this->doctorIsAssigned($user, (int) $visit->patient);
+        return $this->isStaff($user) || $this->doctorIsAssigned($user, (int) $visit->patient, $visit);
     }
 
     public function writeMedicalFile(User $user, cln_x_visits $visit): bool
     {
-        return $user->hasSystemRole('doctor') && $this->doctorIsAssigned($user, (int) $visit->patient);
+        return $user->hasSystemRole('doctor') && $this->doctorIsAssigned($user, (int) $visit->patient, $visit);
     }
 
     public function delete(User $user, cln_x_visits $visit): bool
@@ -46,7 +46,7 @@ class VisitPolicy
         return $user->hasSystemRole('admin', 'super_admin', 'reception', 'receptionist', 'secretary');
     }
 
-    private function doctorIsAssigned(User $user, int $patientId): bool
+    private function doctorIsAssigned(User $user, int $patientId, ?cln_x_visits $visit = null): bool
     {
         if (!$user->hasSystemRole('doctor')) {
             return false;
@@ -55,7 +55,20 @@ class VisitPolicy
         $patientUserId = gnr_m_patients::whereKey($patientId)->value('user_id');
         $doctorIds = array_filter([(int) $user->id, (int) $user->doctor?->id]);
 
-        return $patientUserId && Appointment::query()
+        if (!$patientUserId) {
+            return false;
+        }
+
+        if ($visit?->appointment_id) {
+            return Appointment::query()
+                ->whereKey($visit->appointment_id)
+                ->where('appointment_for', $patientUserId)
+                ->whereIn('appointment_with', $doctorIds)
+                ->where('is_deleted', 0)
+                ->exists();
+        }
+
+        return Appointment::query()
             ->where('appointment_for', $patientUserId)
             ->whereIn('appointment_with', $doctorIds)
             ->where('is_deleted', 0)

@@ -115,7 +115,7 @@ public function pat_visits(): JsonResponse
     \Log::info("جاري جلب زيارات المستخدم ID: " . $patient->id);
 
     // 3. جلب جميع الزيارات بدون فلترة أو حذف المتكرر
-    $visits = cln_x_visits::with(['gnr_m_clinics', 'cln_x_prev_not', 'cln_x_prev_dia'])
+    $visits = cln_x_visits::with(['gnr_m_clinics', 'cln_x_prev_not', 'cln_x_prev_dia', 'vitals', 'issuedPrescription.items'])
                   ->where('patient', '=', $patient->id)
                   ->orderBy('d_start', 'DESC')
                   ->get();
@@ -125,7 +125,7 @@ public function pat_visits(): JsonResponse
     // 4. تنسيق التواريخ
     foreach ($visits as $visit) {
         if ($visit->d_start) {
-             $visit->d_start = Carbon::parse($visit->d_start)->format('Y-m-d \الساعة: h:i A');
+             $visit->d_start = Carbon::createFromTimestamp((int) $visit->d_start)->format('Y-m-d \الساعة: h:i A');
         }
     }
 

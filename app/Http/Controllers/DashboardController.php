@@ -86,7 +86,7 @@ class DashboardController extends Controller
         $featureAvailability = [
             'visit_revenue' => Schema::hasColumn('cln_x_visits', 'price'),
             'doctor_ratings' => Schema::hasColumn('doctors', 'total_rate') && Schema::hasColumn('doctors', 'revisions_num'),
-            'wallet_owners' => Schema::hasColumn('wallet', 'patient_id'),
+            'billing' => Schema::hasTable('invoices'),
         ];
 
         return view('dashboard', [

@@ -11,7 +11,7 @@ use Spatie\Permission\PermissionRegistrar;
 
 class AdminStaffSeeder extends Seeder
 {
-    private const PASSWORD = 'Demo@12345';
+    private const PASSWORD = '12345678';
 
     public function run(): void
     {

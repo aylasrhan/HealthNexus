@@ -22,6 +22,7 @@ class Appointment extends Model
         'status',
         'is_deleted',
     ];
+    protected $casts = ['is_deleted' => 'boolean'];
 // functions
     function patient()
     {
@@ -32,6 +33,10 @@ public function doctor()
     // return $this->belongsTo(\App\Models\back\doctors::class, 'appointment_with', 'user_id');
 return $this->belongsTo(\App\Models\back\doctors::class, 'appointment_with', 'id');
 }
+    public function visit()
+    {
+        return $this->hasOne(cln_x_visits::class, 'appointment_id');
+    }
     // function doctor()
     // {
     //     return $this->hasOne(User::class, 'id', 'appointment_with');

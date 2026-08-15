@@ -10,7 +10,7 @@ use Spatie\Permission\Models\Role;
 
 class ClinicDoctorsSeeder extends Seeder
 {
-    private const PASSWORD = 'Demo@12345';
+    private const PASSWORD = '12345678';
 
     public function run(): void
     {

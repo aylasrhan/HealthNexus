@@ -2,7 +2,12 @@
 
 namespace App\Http\Controllers\Back;
 
+use App\Enums\AppointmentStatus;
+use App\Enums\VisitStatus;
 use App\Http\Controllers\Controller;
+use App\Models\Prescription;
+use App\Models\VisitVital;
+use App\Services\InvoiceService;
 use App\Models\back\cln_m_icd10;
 use App\Models\back\cln_m_medical_his;
 use App\Models\back\cln_m_medical_his_cats;
@@ -23,14 +28,27 @@ class Medical_fileController extends Controller
     public function startConsultation(Appointment $appointment)
     {
         $doctor = $this->currentDoctorFor($appointment);
-        abort_unless((int) $appointment->status === 1, 422, 'يجب تأكيد الموعد قبل بدء المعاينة.');
+        abort_unless((int) $appointment->status === AppointmentStatus::Confirmed->value, 422, 'يجب تأكيد الموعد قبل بدء المعاينة.');
 
         $patient = gnr_m_patients::where('user_id', $appointment->appointment_for)->firstOrFail();
         $visitTimestamp = strtotime($appointment->appointment_date.' '.($appointment->time ?: '00:00:00'));
-        $visit = cln_x_visits::query()
-            ->where('patient', $patient->id)
-            ->where('d_start', $visitTimestamp)
-            ->first();
+        $visit = cln_x_visits::query()->where('appointment_id', $appointment->id)->first();
+        if (!$visit) {
+            $visit = cln_x_visits::query()
+                ->whereNull('appointment_id')
+                ->where('patient', $patient->id)
+                ->where('d_start', $visitTimestamp)
+                ->first();
+            if ($visit) {
+                DB::table('cln_x_visits')->where('id', $visit->id)->update([
+                    'appointment_id' => $appointment->id,
+                    'doctor_id' => $doctor->id,
+                    'updated_at' => now(),
+                ]);
+                $visit->appointment_id = $appointment->id;
+                $visit->doctor_id = $doctor->id;
+            }
+        }
         $clinicId = (int) ($doctor->subgrp ?: $visit?->clinic);
         abort_if($clinicId <= 0, 422, 'لا توجد عيادة مرتبطة بملف الطبيب.');
 
@@ -38,13 +56,16 @@ class Medical_fileController extends Controller
             $visit = new cln_x_visits();
             $visit->timestamps = false;
             $visit->patient = $patient->id;
+            $visit->appointment_id = $appointment->id;
             $visit->clinic = $clinicId;
+            $visit->doctor_id = $doctor->id;
             $visit->type = 1;
-            $visit->status = 0;
+            $visit->status = VisitStatus::Draft->value;
             $visit->d_start = $visitTimestamp ?: time();
+            $visit->updated_at = now();
             $visit->save();
-        } elseif ((int) $visit->clinic !== $clinicId && (int) $visit->status === 0) {
-            DB::table('cln_x_visits')->where('id', $visit->id)->update(['clinic' => $clinicId]);
+        } elseif ((int) $visit->clinic !== $clinicId && (int) $visit->status === VisitStatus::Draft->value) {
+            DB::table('cln_x_visits')->where('id', $visit->id)->update(['clinic' => $clinicId, 'doctor_id' => $doctor->id, 'updated_at' => now()]);
             $visit->clinic = $clinicId;
         }
 
@@ -99,6 +120,7 @@ class Medical_fileController extends Controller
     public function saveConsultation(Request $request, cln_x_visits $visit)
     {
         $this->authorize('writeMedicalFile', $visit);
+        abort_if((int) $visit->status === VisitStatus::Completed->value, 409, 'المعاينة مكتملة. يجب إعادة فتحها قبل التعديل.');
 
         $validated = $request->validate([
             'chief_complaint' => ['nullable', 'string', 'max:4000'],
@@ -118,6 +140,26 @@ class Medical_fileController extends Controller
             'history_notes' => ['nullable', 'array'],
             'history_notes.*' => ['nullable', 'string', 'max:2000'],
             'completion_status' => ['required', Rule::in(['draft', 'complete'])],
+            'vitals' => ['nullable', 'array'],
+            'vitals.temperature' => ['nullable', 'numeric', 'between:30,45'],
+            'vitals.systolic_pressure' => ['nullable', 'integer', 'between:50,300'],
+            'vitals.diastolic_pressure' => ['nullable', 'integer', 'between:30,200'],
+            'vitals.pulse' => ['nullable', 'integer', 'between:20,250'],
+            'vitals.respiratory_rate' => ['nullable', 'integer', 'between:5,80'],
+            'vitals.oxygen_saturation' => ['nullable', 'numeric', 'between:40,100'],
+            'vitals.weight' => ['nullable', 'numeric', 'between:1,500'],
+            'vitals.height' => ['nullable', 'numeric', 'between:30,250'],
+            'vitals.blood_sugar' => ['nullable', 'numeric', 'between:20,1000'],
+            'prescription_notes' => ['nullable', 'string', 'max:4000'],
+            'prescription_items' => ['nullable', 'array', 'max:30'],
+            'prescription_items.*.medication_name' => ['nullable', 'string', 'max:255'],
+            'prescription_items.*.dosage' => ['nullable', 'string', 'max:120'],
+            'prescription_items.*.frequency' => ['nullable', 'string', 'max:120'],
+            'prescription_items.*.duration' => ['nullable', 'string', 'max:120'],
+            'prescription_items.*.route' => ['nullable', 'string', 'max:120'],
+            'prescription_items.*.instructions' => ['nullable', 'string', 'max:2000'],
+            'follow_up_date' => ['nullable', 'date', 'after_or_equal:today'],
+            'follow_up_time' => ['nullable', 'date_format:H:i', 'required_with:follow_up_date'],
         ]);
 
         $doctorId = (int) auth()->user()->doctor->id;
@@ -179,16 +221,97 @@ class Medical_fileController extends Controller
                 ]);
             }
 
+            $vitals = array_filter($validated['vitals'] ?? [], fn ($value) => $value !== null && $value !== '');
+            if ($vitals) {
+                $height = isset($vitals['height']) ? (float) $vitals['height'] : null;
+                $weight = isset($vitals['weight']) ? (float) $vitals['weight'] : null;
+                $vitals['bmi'] = $height && $weight ? round($weight / (($height / 100) ** 2), 2) : null;
+                VisitVital::updateOrCreate(['visit_id' => $visit->id], $vitals + [
+                    'recorded_by' => auth()->id(),
+                    'measured_at' => now(),
+                ]);
+            } else {
+                VisitVital::where('visit_id', $visit->id)->delete();
+            }
+
+            $prescriptionItems = collect($validated['prescription_items'] ?? [])
+                ->filter(fn ($item) => filled($item['medication_name'] ?? null))->values();
+            if ($prescriptionItems->isNotEmpty() || filled($validated['prescription_notes'] ?? null)) {
+                foreach ($prescriptionItems as $item) {
+                    if ($validated['completion_status'] === 'complete' && (!filled($item['dosage'] ?? null) || !filled($item['frequency'] ?? null) || !filled($item['duration'] ?? null))) {
+                        abort(422, 'يجب إدخال الجرعة والتكرار والمدة لكل دواء.');
+                    }
+                }
+                $prescription = Prescription::updateOrCreate(['visit_id' => $visit->id], [
+                    'patient_id' => $visit->patient,
+                    'doctor_id' => $doctorId,
+                    'status' => $validated['completion_status'] === 'complete' ? 'issued' : 'draft',
+                    'issued_at' => $validated['completion_status'] === 'complete' ? now() : null,
+                    'notes' => $validated['prescription_notes'] ?? null,
+                ]);
+                $prescription->items()->delete();
+                foreach ($prescriptionItems as $index => $item) {
+                    $prescription->items()->create($item + ['sort_order' => $index]);
+                }
+            } else {
+                Prescription::where('visit_id', $visit->id)->delete();
+            }
+
+            if (!empty($validated['follow_up_date'])) {
+                $patientUserId = gnr_m_patients::whereKey($visit->patient)->value('user_id');
+                Appointment::updateOrCreate([
+                    'appointment_for' => $patientUserId,
+                    'appointment_with' => $doctorId,
+                    'appointment_date' => $validated['follow_up_date'],
+                    'time' => $validated['follow_up_time'].':00',
+                ], ['status' => AppointmentStatus::Pending->value, 'is_deleted' => 0]);
+            }
+
             DB::table('cln_x_visits')->where('id', $visit->id)->update([
-                'status' => $validated['completion_status'] === 'complete' ? 1 : 0,
+                'status' => $validated['completion_status'] === 'complete' ? VisitStatus::Completed->value : VisitStatus::Draft->value,
+                'doctor_id' => $doctorId,
+                'completed_at' => $validated['completion_status'] === 'complete' ? now() : null,
+                'updated_at' => now(),
             ]);
         });
+
+        if ($validated['completion_status'] === 'complete') {
+            app(InvoiceService::class)->syncFromVisit($visit->fresh(), auth()->id());
+        }
 
         $message = $validated['completion_status'] === 'complete'
             ? 'تم حفظ المعاينة وإنهاؤها بنجاح.'
             : 'تم حفظ مسودة المعاينة.';
 
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $message, 'saved_at' => now()->toIso8601String()]);
+        }
+
         return redirect()->route('consultations.edit', $visit)->with('success', $message);
+    }
+
+    public function reopenConsultation(Request $request, cln_x_visits $visit)
+    {
+        $this->authorize('writeMedicalFile', $visit);
+        abort_unless((int) $visit->status === VisitStatus::Completed->value, 422, 'المعاينة ليست مكتملة.');
+        $validated = $request->validate(['reason' => ['required', 'string', 'min:5', 'max:2000']]);
+
+        DB::transaction(function () use ($visit, $validated) {
+            DB::table('visit_reopen_logs')->insert([
+                'visit_id' => $visit->id,
+                'reopened_by' => auth()->id(),
+                'reason' => $validated['reason'],
+                'created_at' => now(),
+            ]);
+            DB::table('cln_x_visits')->where('id', $visit->id)->update([
+                'status' => VisitStatus::Draft->value,
+                'completed_at' => null,
+                'updated_at' => now(),
+            ]);
+            Prescription::where('visit_id', $visit->id)->update(['status' => 'draft', 'issued_at' => null]);
+        });
+
+        return back()->with('success', 'تمت إعادة فتح المعاينة وتسجيل السبب.');
     }
 
     private function currentDoctorFor(Appointment $appointment)
@@ -214,7 +337,7 @@ class Medical_fileController extends Controller
             'clinicalExam' => $text('cln_x_prev_cln'),
             'doctorNotes' => $text('cln_x_prev_not'),
             'selectedDiagnosisRows' => cln_m_icd10::query()->whereIn('id', DB::table('cln_x_prev_icd10')->where('visit', $visit->id)->where('doc', $doctorId)->pluck('opr_id'))->get(['id', 'name_ar', 'code']),
-            'services' => cln_m_services::query()->where('clinic', $visit->clinic)->orderBy('name_ar')->get(['id', 'name_ar']),
+            'services' => cln_m_services::query()->where('clinic', $visit->clinic)->orderBy('name_ar')->get(['id', 'name_ar', 'price']),
             'selectedServices' => DB::table('cln_x_visits_services')->where('visit_id', $visit->id)->pluck('service')->map(fn ($id) => (int) $id)->all(),
             'medicalHistoryCategories' => cln_m_medical_his_cats::query()->orderBy('ord')->get(['id', 'name_ar']),
             'selectedMedicalHistory' => cln_m_medical_his::query()
@@ -222,6 +345,8 @@ class Medical_fileController extends Controller
                 ->get(['id', 'cat', 'name_ar'])->groupBy('cat'),
             'medicalHistoryNotes' => DB::table('cln_x_medical_his')->where('patient', $visit->patient)
                 ->selectRaw('cat, MAX(note) note')->groupBy('cat')->pluck('note', 'cat'),
+            'vitals' => VisitVital::where('visit_id', $visit->id)->first(),
+            'prescription' => Prescription::with('items')->where('visit_id', $visit->id)->first(),
         ];
     }
 
