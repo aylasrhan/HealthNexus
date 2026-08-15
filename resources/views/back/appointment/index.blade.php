@@ -20,6 +20,7 @@
                 @endif
                 <div class="form-group mb-0"><label for="appointment-patient">اسم المريض</label><input id="appointment-patient" class="form-control" name="p_name" value="{{ request('p_name') }}" placeholder="ابحث باسم المريض"></div>
                 <div class="form-group mb-0"><label for="appointment-status">الحالة</label><select id="appointment-status" class="form-control" name="status"><option value="">جميع الحالات</option><option value="0" @selected(request('status') === '0')>قيد الانتظار</option><option value="1" @selected(request('status') === '1')>مؤكد</option><option value="2" @selected(request('status') === '2')>ملغي</option></select></div>
+                <div class="form-group mb-0"><label for="appointment-date">التاريخ</label><input id="appointment-date" class="form-control" type="date" name="date" value="{{ request('date') }}"></div>
                 <div class="form-group mb-0"><label for="appointment-period">الفترة</label><select id="appointment-period" class="form-control" name="period"><option value="">جميع المواعيد</option><option value="today" @selected(request('period') === 'today')>اليوم</option><option value="upcoming" @selected(request('period') === 'upcoming')>القادمة</option></select></div>
                 <div class="hn-filter-actions"><button class="hn-btn hn-btn-primary" type="submit"><i class="fe fe-search"></i> تطبيق</button><a class="hn-btn hn-btn-light" href="{{ url('appointments') }}">مسح</a></div>
             </form>
@@ -44,6 +45,9 @@
                             <td>{{ $appointment->time ? \Carbon\Carbon::parse($appointment->time)->format('h:i A') : (optional($appointment->timeSlot)->from ?? '—') }}</td>
                             <td><span class="hn-badge hn-badge-{{ $status[1] }}">{{ $status[0] }}</span></td>
                             <td><div class="hn-row-actions">
+                                @if($role === 'doctor' && (int)$appointment->status === 1)
+                                    <a class="hn-icon-btn hn-icon-btn-primary" href="{{ route('consultations.start', $appointment) }}" title="بدء أو متابعة المعاينة" aria-label="بدء أو متابعة المعاينة"><i class="fe fe-clipboard"></i></a>
+                                @endif
                                 @if((int)$appointment->status === 0)<form action="{{ route('appointments.confirm', $appointment) }}" method="POST">@csrf @method('PATCH')<button class="hn-icon-btn" type="submit" title="تأكيد الموعد" aria-label="تأكيد الموعد"><i class="fe fe-check"></i></button></form>@endif
                                 @if((int)$appointment->status !== 2)<form action="{{ route('appointments.cancel', $appointment) }}" method="POST" onsubmit="return confirm('هل تريد إلغاء هذا الموعد؟')">@csrf @method('PATCH')<button class="hn-icon-btn hn-icon-btn-danger" type="submit" title="إلغاء الموعد" aria-label="إلغاء الموعد"><i class="fe fe-x"></i></button></form>@endif
                             </div></td>

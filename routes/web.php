@@ -69,9 +69,14 @@ Route::middleware('auth')->group(callback: function () {
 
     // Route::get('/services/{id}/{clinic}/edit', [Cln_m_servicesController::class])->name("services.edit");
     Route::get('medical-files', [Medical_fileController::class, 'index'])->name('medical-files.index');
+    Route::get('consultations/appointments/{appointment}/start', [Medical_fileController::class, 'startConsultation'])->name('consultations.start');
+    Route::get('consultations/diagnoses/search', [Medical_fileController::class, 'searchDiagnoses'])->name('consultations.diagnoses.search');
+    Route::get('consultations/medical-history/search', [Medical_fileController::class, 'searchMedicalHistory'])->name('consultations.medical-history.search');
+    Route::get('consultations/{visit}/edit', [Medical_fileController::class, 'editConsultation'])->name('consultations.edit');
+    Route::put('consultations/{visit}', [Medical_fileController::class, 'saveConsultation'])->name('consultations.update');
     Route::get('services/{service}', [Cln_m_servicesController::class, 'show'])->name('services.show');
-    Route::resource('services', Cln_m_servicesController::class)->except(['index', 'show'])->middleware('staff');
-    Route::resource('medical', Cln_m_medical_hisController::class)->middleware('staff');
+    Route::resource('services', Cln_m_servicesController::class)->except(['index', 'show'])->middleware('medical.visit');
+    Route::resource('medical', Cln_m_medical_hisController::class)->middleware('medical.visit');
     Route::resource('com', Cln_x_prev_comController::class)->middleware('medical.visit');
     Route::resource('str', Cln_x_prev_strController::class)->middleware('medical.visit');
     Route::resource('cln', Cln_x_prev_clnController::class)->middleware('medical.visit');

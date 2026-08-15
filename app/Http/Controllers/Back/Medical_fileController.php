@@ -9,15 +9,222 @@ use App\Models\back\cln_m_medical_his_cats;
 use App\Models\back\cln_m_services;
 use App\Models\back\cln_x_prev_icd10;
 use App\Models\back\cln_x_visits;
+use App\Models\back\Appointment;
 use App\Models\back\gnr_m_patients;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Validation\Rule;
 
 class Medical_fileController extends Controller
 {
+    public function startConsultation(Appointment $appointment)
+    {
+        $doctor = $this->currentDoctorFor($appointment);
+        abort_unless((int) $appointment->status === 1, 422, 'يجب تأكيد الموعد قبل بدء المعاينة.');
+
+        $patient = gnr_m_patients::where('user_id', $appointment->appointment_for)->firstOrFail();
+        $visitTimestamp = strtotime($appointment->appointment_date.' '.($appointment->time ?: '00:00:00'));
+        $visit = cln_x_visits::query()
+            ->where('patient', $patient->id)
+            ->where('d_start', $visitTimestamp)
+            ->first();
+        $clinicId = (int) ($doctor->subgrp ?: $visit?->clinic);
+        abort_if($clinicId <= 0, 422, 'لا توجد عيادة مرتبطة بملف الطبيب.');
+
+        if (!$visit) {
+            $visit = new cln_x_visits();
+            $visit->timestamps = false;
+            $visit->patient = $patient->id;
+            $visit->clinic = $clinicId;
+            $visit->type = 1;
+            $visit->status = 0;
+            $visit->d_start = $visitTimestamp ?: time();
+            $visit->save();
+        } elseif ((int) $visit->clinic !== $clinicId && (int) $visit->status === 0) {
+            DB::table('cln_x_visits')->where('id', $visit->id)->update(['clinic' => $clinicId]);
+            $visit->clinic = $clinicId;
+        }
+
+        return redirect()->route('consultations.edit', $visit);
+    }
+
+    public function editConsultation(cln_x_visits $visit)
+    {
+        $this->authorize('writeMedicalFile', $visit);
+
+        return view('back.consultations.edit', $this->consultationData($visit));
+    }
+
+    public function searchDiagnoses(Request $request)
+    {
+        abort_unless($request->user()?->hasSystemRole('doctor'), 403);
+        $term = trim((string) $request->query('q'));
+
+        $rows = cln_m_icd10::query()
+            ->when($term !== '', fn ($query) => $query->where(function ($nested) use ($term) {
+                $nested->where('name_ar', 'like', "%{$term}%")
+                    ->orWhere('name_en', 'like', "%{$term}%")
+                    ->orWhere('code', 'like', "{$term}%");
+            }))
+            ->orderBy('code')
+            ->limit(30)
+            ->get(['id', 'code', 'name_ar']);
+
+        return response()->json(['results' => $rows->map(fn ($row) => [
+            'id' => $row->id,
+            'text' => trim($row->code.' — '.$row->name_ar),
+        ])]);
+    }
+
+    public function searchMedicalHistory(Request $request)
+    {
+        abort_unless($request->user()?->hasSystemRole('doctor'), 403);
+        $validated = $request->validate(['cat' => ['required', 'integer', 'exists:cln_m_medical_his_cats,id']]);
+        $term = trim((string) $request->query('q'));
+
+        $rows = cln_m_medical_his::query()
+            ->where('cat', $validated['cat'])
+            ->when($term !== '', fn ($query) => $query->where(function ($nested) use ($term) {
+                $nested->where('name_ar', 'like', "%{$term}%")
+                    ->orWhere('name_en', 'like', "%{$term}%");
+            }))
+            ->orderBy('name_ar')->limit(30)->get(['id', 'name_ar']);
+
+        return response()->json(['results' => $rows->map(fn ($row) => ['id' => $row->id, 'text' => $row->name_ar])]);
+    }
+
+    public function saveConsultation(Request $request, cln_x_visits $visit)
+    {
+        $this->authorize('writeMedicalFile', $visit);
+
+        $validated = $request->validate([
+            'chief_complaint' => ['nullable', 'string', 'max:4000'],
+            'history' => ['nullable', 'string', 'max:8000'],
+            'clinical_exam' => ['nullable', 'string', 'max:8000'],
+            'doctor_notes' => ['nullable', 'string', 'max:8000'],
+            'diagnoses' => ['nullable', 'array'],
+            'diagnoses.*' => ['integer', 'exists:cln_m_icd10,id'],
+            'services' => ['nullable', 'array'],
+            'services.*' => [
+                'integer',
+                Rule::exists('cln_m_services', 'id')->where(fn ($query) => $query->where('clinic', $visit->clinic)),
+            ],
+            'medical_history' => ['nullable', 'array'],
+            'medical_history.*' => ['nullable', 'array'],
+            'medical_history.*.*' => ['integer', 'exists:cln_m_medical_his,id'],
+            'history_notes' => ['nullable', 'array'],
+            'history_notes.*' => ['nullable', 'string', 'max:2000'],
+            'completion_status' => ['required', Rule::in(['draft', 'complete'])],
+        ]);
+
+        $doctorId = (int) auth()->user()->doctor->id;
+        DB::transaction(function () use ($visit, $validated, $doctorId) {
+            $textSections = [
+                'cln_x_prev_com' => $validated['chief_complaint'] ?? null,
+                'cln_x_prev_str' => $validated['history'] ?? null,
+                'cln_x_prev_cln' => $validated['clinical_exam'] ?? null,
+                'cln_x_prev_not' => $validated['doctor_notes'] ?? null,
+            ];
+
+            foreach ($textSections as $table => $value) {
+                DB::table($table)->where('visit', $visit->id)->where('doc', $doctorId)->delete();
+                if (filled($value)) {
+                    DB::table($table)->insert([
+                        'visit' => $visit->id,
+                        'patient' => $visit->patient,
+                        'doc' => $doctorId,
+                        'val' => trim($value),
+                    ]);
+                }
+            }
+
+            DB::table('cln_x_prev_icd10')->where('visit', $visit->id)->where('doc', $doctorId)->delete();
+            foreach (array_unique($validated['diagnoses'] ?? []) as $diagnosisId) {
+                DB::table('cln_x_prev_icd10')->insert([
+                    'visit' => $visit->id,
+                    'patient' => $visit->patient,
+                    'opr_id' => $diagnosisId,
+                    'doc' => $doctorId,
+                ]);
+            }
+
+            DB::table('cln_x_medical_his')->where('patient', $visit->patient)->delete();
+            foreach (($validated['medical_history'] ?? []) as $categoryId => $medicalIds) {
+                $allowedIds = cln_m_medical_his::query()->where('cat', (int) $categoryId)
+                    ->whereIn('id', array_unique($medicalIds ?? []))->pluck('id');
+                foreach ($allowedIds as $medicalId) {
+                    DB::table('cln_x_medical_his')->insert([
+                        'cat' => (int) $categoryId,
+                        'med_id' => $medicalId,
+                        'patient' => $visit->patient,
+                        'doc' => $doctorId,
+                        'note' => trim((string) ($validated['history_notes'][$categoryId] ?? '')) ?: null,
+                    ]);
+                }
+            }
+
+            DB::table('cln_x_visits_services')->where('visit_id', $visit->id)->delete();
+            foreach (array_unique($validated['services'] ?? []) as $serviceId) {
+                DB::table('cln_x_visits_services')->insert([
+                    'visit_id' => $visit->id,
+                    'clinic' => $visit->clinic,
+                    'service' => $serviceId,
+                    'status' => 0,
+                    'patient' => $visit->patient,
+                    'd_start' => time(),
+                    'srv_type' => 0,
+                ]);
+            }
+
+            DB::table('cln_x_visits')->where('id', $visit->id)->update([
+                'status' => $validated['completion_status'] === 'complete' ? 1 : 0,
+            ]);
+        });
+
+        $message = $validated['completion_status'] === 'complete'
+            ? 'تم حفظ المعاينة وإنهاؤها بنجاح.'
+            : 'تم حفظ مسودة المعاينة.';
+
+        return redirect()->route('consultations.edit', $visit)->with('success', $message);
+    }
+
+    private function currentDoctorFor(Appointment $appointment)
+    {
+        $user = auth()->user();
+        abort_unless($user?->hasSystemRole('doctor') && $user->doctor, 403);
+        abort_unless(in_array((int) $appointment->appointment_with, [(int) $user->id, (int) $user->doctor->id], true), 403);
+
+        return $user->doctor;
+    }
+
+    private function consultationData(cln_x_visits $visit): array
+    {
+        $doctorId = (int) auth()->user()->doctor->id;
+        $text = fn (string $table) => (string) DB::table($table)
+            ->where('visit', $visit->id)->where('doc', $doctorId)->value('val');
+
+        return [
+            'visit' => $visit->load('gnr_m_clinics'),
+            'patientProfile' => gnr_m_patients::findOrFail($visit->patient),
+            'chiefComplaint' => $text('cln_x_prev_com'),
+            'history' => $text('cln_x_prev_str'),
+            'clinicalExam' => $text('cln_x_prev_cln'),
+            'doctorNotes' => $text('cln_x_prev_not'),
+            'selectedDiagnosisRows' => cln_m_icd10::query()->whereIn('id', DB::table('cln_x_prev_icd10')->where('visit', $visit->id)->where('doc', $doctorId)->pluck('opr_id'))->get(['id', 'name_ar', 'code']),
+            'services' => cln_m_services::query()->where('clinic', $visit->clinic)->orderBy('name_ar')->get(['id', 'name_ar']),
+            'selectedServices' => DB::table('cln_x_visits_services')->where('visit_id', $visit->id)->pluck('service')->map(fn ($id) => (int) $id)->all(),
+            'medicalHistoryCategories' => cln_m_medical_his_cats::query()->orderBy('ord')->get(['id', 'name_ar']),
+            'selectedMedicalHistory' => cln_m_medical_his::query()
+                ->whereIn('id', DB::table('cln_x_medical_his')->where('patient', $visit->patient)->pluck('med_id'))
+                ->get(['id', 'cat', 'name_ar'])->groupBy('cat'),
+            'medicalHistoryNotes' => DB::table('cln_x_medical_his')->where('patient', $visit->patient)
+                ->selectRaw('cat, MAX(note) note')->groupBy('cat')->pluck('note', 'cat'),
+        ];
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -43,7 +250,7 @@ class Medical_fileController extends Controller
                     ->from('appointments')
                     ->whereColumn('appointments.appointment_for', 'patients.user_id')
                     ->whereIn('appointments.appointment_with', $doctorIdentifiers)
-                    ->whereNull('appointments.deleted_at');
+                    ->where('appointments.is_deleted', 0);
             });
         }
 

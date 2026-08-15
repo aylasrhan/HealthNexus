@@ -4,7 +4,9 @@
 
 @section('content')
     <x-ui.page-header title="المرضى" description="إدارة ملفات المرضى والوصول إلى مواعيدهم وزياراتهم الطبية.">
+        @can('create', \App\Models\back\gnr_m_patients::class)
         <a href="{{ route('patients.create') }}" class="hn-btn hn-btn-primary"><i class="fe fe-user-plus"></i> إضافة مريض</a>
+        @endcan
     </x-ui.page-header>
 
     <x-ui.flash />
@@ -38,10 +40,10 @@
                             <td>{{ optional($patient->gnr_m_cities)->name ?? '—' }}<small class="d-block text-muted">{{ optional($patient->gnr_m_areas)->name ?? '' }}</small></td>
                             <td>
                                 <div class="hn-row-actions">
-                                    <a href="{{ route('patients.edit', $patient->id) }}" class="hn-icon-btn" title="تعديل المريض" aria-label="تعديل المريض"><i class="fe fe-edit-2"></i></a>
+                                    @can('update', $patient)<a href="{{ route('patients.edit', $patient->id) }}" class="hn-icon-btn" title="تعديل بيانات المريض" aria-label="تعديل بيانات المريض"><i class="fe fe-edit-2"></i></a>@endcan
                                     <a href="{{ url('patient-appointments/'.optional($patient->user)->id) }}" class="hn-icon-btn" title="مواعيد المريض" aria-label="مواعيد المريض"><i class="fe fe-calendar"></i></a>
-                                    <a href="{{ route('visits.show', $patient->id) }}" class="hn-icon-btn" title="زيارات المريض" aria-label="زيارات المريض"><i class="fe fe-activity"></i></a>
-                                    <form action="{{ route('patients.destroy', $patient->id) }}" method="POST" class="js-patient-delete d-inline">@csrf @method('DELETE')<input type="hidden" name="input" value="{{ $patient->id }}"><button class="hn-icon-btn hn-icon-btn-danger" type="submit" title="حذف المريض" aria-label="حذف المريض"><i class="fe fe-trash-2"></i></button></form>
+                                    <a href="{{ route('visits.show', $patient->id) }}" class="hn-icon-btn" title="فتح الملف الطبي والزيارات" aria-label="فتح الملف الطبي"><i class="fe fe-file-text"></i></a>
+                                    @can('delete', $patient)<form action="{{ route('patients.destroy', $patient->id) }}" method="POST" class="js-patient-delete d-inline">@csrf @method('DELETE')<input type="hidden" name="input" value="{{ $patient->id }}"><button class="hn-icon-btn hn-icon-btn-danger" type="submit" title="حذف المريض" aria-label="حذف المريض"><i class="fe fe-trash-2"></i></button></form>@endcan
                                 </div>
                             </td>
                         </tr>

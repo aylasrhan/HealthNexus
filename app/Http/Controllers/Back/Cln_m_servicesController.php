@@ -175,6 +175,9 @@ dd($allvisit);
      */
     public function edit(Request $request)
     {
+        if ($request->user()->hasSystemRole('doctor') && $request->filled('visit')) {
+            return redirect()->route('consultations.edit', $request->integer('visit'));
+        }
         $val = $this->Service->edit($request);
 
         return view('back.services.edit',

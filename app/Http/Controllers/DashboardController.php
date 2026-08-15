@@ -10,6 +10,7 @@ use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class DashboardController extends Controller
 {
@@ -69,12 +70,35 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
+        $calendar = $this->appointmentCalendar($appointments, $today);
+        $operations = [
+            'unanswered_questions' => DB::table('question')->where(fn ($q) => $q->whereNull('answer')->orWhere('answer', ''))->count(),
+            'incomplete_locations' => gnr_m_patients::query()->where(fn ($q) => $q->whereNull('p_city')->orWhere('p_city', '<=', 0)->orWhereNull('p_area')->orWhere('p_area', '<=', 0))->count(),
+            'inactive_doctors' => doctors::query()->where('act', '<>', 1)->count(),
+            'active_ads' => Schema::hasTable('ads') ? DB::table('ads')->where('statue', 1)->count() : 0,
+        ];
+        $tasks = collect([
+            ['label'=>'مواعيد تنتظر التأكيد','count'=>$stats['pending_appointments'],'icon'=>'fe-clock','tone'=>'warning','url'=>url('pending-appointment')],
+            ['label'=>'أسئلة بلا إجابة','count'=>$operations['unanswered_questions'],'icon'=>'fe-message-circle','tone'=>'danger','url'=>route('questions.index')],
+            ['label'=>'مرضى بموقع غير مكتمل','count'=>$operations['incomplete_locations'],'icon'=>'fe-map-pin','tone'=>'warning','url'=>route('patients.index')],
+            ['label'=>'أطباء خارج الدوام','count'=>$operations['inactive_doctors'],'icon'=>'fe-user-x','tone'=>'muted','url'=>route('doctors.index')],
+        ])->filter(fn ($task) => $task['count'] > 0)->values();
+        $featureAvailability = [
+            'visit_revenue' => Schema::hasColumn('cln_x_visits', 'price'),
+            'doctor_ratings' => Schema::hasColumn('doctors', 'total_rate') && Schema::hasColumn('doctors', 'revisions_num'),
+            'wallet_owners' => Schema::hasColumn('wallet', 'patient_id'),
+        ];
+
         return view('dashboard', [
             'user' => $user,
             'stats' => $stats,
             'todayAppointments' => $todayAppointments,
             'trend' => $trend,
             'recentPatients' => $recentPatients,
+            'calendar' => $calendar,
+            'operations' => $operations,
+            'tasks' => $tasks,
+            'featureAvailability' => $featureAvailability,
         ]);
     }
 
@@ -115,7 +139,17 @@ class DashboardController extends Controller
             return ['label' => $date->locale('ar')->translatedFormat('D'), 'value' => (int) ($appointmentTrend[$date->toDateString()] ?? 0)];
         });
 
-        return view('dashboard-doctor', compact('user', 'doctor', 'stats', 'todayAppointments', 'upcomingAppointments', 'trend'));
+        $calendar = $this->appointmentCalendar($appointments, $today);
+        $doctorSection = (int) $doctor?->subgrp;
+        $questionUrl = $doctorSection ? route('questions.show', $doctorSection) : route('dashboard');
+        $pendingQuestionUrl = $doctorSection ? route('questions.answer', $doctorSection) : route('dashboard');
+        $tasks = collect([
+            ['label'=>'مواعيد تنتظر إجراءك','count'=>$stats['pending'],'icon'=>'fe-clock','tone'=>'warning','url'=>url('appointments')],
+            ['label'=>'أسئلة تنتظر إجابتك','count'=>$stats['unanswered_questions'],'icon'=>'fe-message-circle','tone'=>'danger','url'=>$pendingQuestionUrl],
+            ['label'=>'مواعيد اليوم','count'=>$stats['today_appointments'],'icon'=>'fe-calendar','tone'=>'success','url'=>url('appointments')],
+        ])->filter(fn ($task) => $task['count'] > 0)->values();
+
+        return view('dashboard-doctor', compact('user', 'doctor', 'stats', 'todayAppointments', 'upcomingAppointments', 'trend', 'calendar', 'tasks', 'questionUrl', 'pendingQuestionUrl'));
     }
 
     private function patientDashboard($user): View
@@ -133,5 +167,20 @@ class DashboardController extends Controller
         ];
 
         return view('dashboard-patient', compact('user', 'patient', 'stats', 'nextAppointments'));
+    }
+
+    private function appointmentCalendar($query, Carbon $reference): array
+    {
+        $monthStart = $reference->copy()->startOfMonth();
+        $monthEnd = $reference->copy()->endOfMonth();
+        $counts = (clone $query)->whereBetween('appointment_date', [$monthStart->toDateString(), $monthEnd->toDateString()])
+            ->selectRaw('DATE(appointment_date) day, COUNT(*) total')->groupBy('day')->pluck('total', 'day');
+        $leading = ($monthStart->dayOfWeek + 1) % 7;
+        $days = collect(range(1, $monthEnd->day))->map(function ($day) use ($monthStart, $counts, $reference) {
+            $date = $monthStart->copy()->day($day);
+            return ['day'=>$day, 'date'=>$date->toDateString(), 'count'=>(int)($counts[$date->toDateString()] ?? 0), 'today'=>$date->isSameDay($reference)];
+        });
+
+        return ['label'=>$reference->locale('ar')->translatedFormat('F Y'), 'leading'=>$leading, 'days'=>$days];
     }
 }

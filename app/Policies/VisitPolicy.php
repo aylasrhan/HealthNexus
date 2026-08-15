@@ -58,7 +58,7 @@ class VisitPolicy
         return $patientUserId && Appointment::query()
             ->where('appointment_for', $patientUserId)
             ->whereIn('appointment_with', $doctorIds)
-            ->whereNull('deleted_at')
+            ->where('is_deleted', 0)
             ->exists();
     }
 }
