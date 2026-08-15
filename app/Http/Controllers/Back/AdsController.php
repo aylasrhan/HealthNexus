@@ -50,6 +50,11 @@ class AdsController extends Controller
      */
     public function store(Request $request)
     {
+        $request->validate([
+            'text' => ['nullable', 'string', 'max:2000'],
+            'img' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
+            'statue' => ['required', 'integer', 'in:0,1'],
+        ]);
         try {
             $this->adsRepository->store($request);
             return Redirect()->back()->with('success', 'saved success');
@@ -84,6 +89,11 @@ class AdsController extends Controller
 
     public function update(Request $request, string $id)
     {
+        $request->validate([
+            'text' => ['nullable', 'string', 'max:2000'],
+            'img' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:3072'],
+            'statue' => ['required', 'integer', 'in:0,1'],
+        ]);
         try {
             $Update = $this->adsRepository->update($request,$id);
             return Redirect('/ads')->with('success', ' updated!');

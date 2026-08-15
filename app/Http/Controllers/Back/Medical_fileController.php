@@ -31,6 +31,14 @@ class Medical_fileController extends Controller
      */
     public function create(Request $request)
     {
+        $request->validate([
+            'patient' => ['required', 'integer', 'exists:gnr_m_patients,id'],
+            'visit' => ['required', 'integer', 'exists:cln_x_visits,id'],
+            'clinic' => ['required', 'integer', 'exists:gnr_m_clinics,id'],
+        ]);
+        $visitModel = cln_x_visits::findOrFail($request->integer('visit'));
+        abort_unless((int) $visitModel->patient === $request->integer('patient'), 422, 'بيانات المريض لا تطابق الزيارة.');
+        $this->authorize('writeMedicalFile', $visitModel);
         //var
         $patient = $request->patient;
         $visit = $request->visit;
@@ -78,6 +86,20 @@ class Medical_fileController extends Controller
      */
     public function store(Request $request)
     {
+        $request->validate([
+            'patient' => ['required', 'integer', 'exists:gnr_m_patients,id'],
+            'visit' => ['required', 'integer', 'exists:cln_x_visits,id'],
+            'clinic' => ['required', 'integer', 'exists:gnr_m_clinics,id'],
+            'height' => ['nullable', 'numeric', 'min:20', 'max:300'],
+            'birth_date' => ['nullable', 'date'],
+            'sex' => ['nullable', 'integer', 'in:1,2'],
+            'services.*' => ['integer', 'exists:cln_m_services,id'],
+            'icd10SelectedID.*' => ['integer', 'exists:cln_m_icd10,id'],
+        ]);
+        $visitModel = cln_x_visits::findOrFail($request->integer('visit'));
+        abort_unless((int) $visitModel->patient === $request->integer('patient'), 422, 'بيانات المريض لا تطابق الزيارة.');
+        abort_unless((int) $visitModel->clinic === $request->integer('clinic'), 422, 'بيانات العيادة لا تطابق الزيارة.');
+        $this->authorize('writeMedicalFile', $visitModel);
         //dd($request);
 
         $user = User::find(Auth::id());

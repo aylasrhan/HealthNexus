@@ -1,218 +1,63 @@
 @extends('layouts.master')
-@section('css')
 
-@section('title')
-    المستخدمين
-@stop
-
-<!-- Internal Data table css -->
-
-<link href="{{ URL::asset('assets/plugins/datatable/css/dataTables.bootstrap4.min.css') }}" rel="stylesheet"/>
-<link href="{{ URL::asset('assets/plugins/datatable/css/buttons.bootstrap4.min.css') }}" rel="stylesheet">
-<link href="{{ URL::asset('assets/plugins/datatable/css/responsive.bootstrap4.min.css') }}" rel="stylesheet"/>
-<link href="{{ URL::asset('assets/plugins/datatable/css/jquery.dataTables.min.css') }}" rel="stylesheet">
-<link href="{{ URL::asset('assets/plugins/datatable/css/responsive.dataTables.min.css') }}" rel="stylesheet">
-<!--Internal   Notify -->
-<link href="{{ URL::asset('assets/plugins/notify/css/notifIt.css') }}" rel="stylesheet"/>
-
-@endsection
-@section('page-header')
-    <!-- breadcrumb -->
-
-
-    <div class="breadcrumb-header justify-content-between">
-        <div class="my-auto">
-            <div class="d-flex">
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb breadcrumb-style2">
-                        <li class="breadcrumb-item">
-                            <a href="{{ url('/' . $page='dashboard') }}">الصفحة الرئيسية</a>
-                        </li>
-                        <li class="breadcrumb-item">
-                            <a href="{{ url('/' . $page='patients') }}">المرضى</a>
-                        </li>
-                        <li class="breadcrumb-item active">زيارات المريض</li>
-                    </ol>
-                </nav>
-            </div>
-        </div>
-    </div>
-    <!-- breadcrumb -->
-@endsection
+@section('title', 'زيارات المريض')
 
 @section('content')
+    <x-ui.page-header title="زيارات المريض" description="متابعة الزيارات وفتح الملف الطبي المرتبط بكل زيارة.">
+        <a href="{{ route('patients.index') }}" class="hn-btn hn-btn-light"><i class="fe fe-arrow-right"></i> العودة للمرضى</a>
+        <button class="hn-btn hn-btn-primary" type="button" data-toggle="modal" data-target="#new-visit-modal"><i class="fe fe-plus"></i> إضافة زيارة</button>
+    </x-ui.page-header>
 
-    @if (session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
-    @endif
-    @if (session('error'))
-        <div class="alert alert-success">
-            {{ session('error') }}
-        </div>
-    @endif
+    <x-ui.flash />
 
-    <!-- row opened -->
-    <div class="row row-sm">
-        <div class="col-xl-12">
-            <div class="card">
-                <div class="card-header pb-0">
-                    <div class="col-sm-1 col-md-2">
-                        <a class="btn btn-primary btn-sm" data-effect="effect-scale"
-                           data-user_id="{{$patient}}"
-                           data-toggle="modal" href="#modaldemo9" title="اضافة"><i
-                                class="las la-pen-fancy"></i> اضافة زيارة </a>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive hoverable-table">
-                        <table class="table table-hover" id="example1" data-page-length='50'
-                               style=" text-align: center;">
-                            <thead>
-                            <tr>
-                                <th class="wd-10p border-bottom-0">عيادة</th>
-                                <th class="wd-15p border-bottom-0">حالتها</th>
-                                <th class="wd-20p border-bottom-0">بداية الزيارة</th>
-                                <th class="wd-15p border-bottom-0">ملاحظة</th>
-                                <th class="wd-15p border-bottom-0">التكلفة</th>
-                                <th class="wd-15p border-bottom-0">العمليات</th>
-                            </tr>
-                            </thead>
-                            <tbody id="">
-                            @foreach ($visits as $key => $pat)
-                                <tr>
-                                    <td>{{ $pat->gnr_m_clinics->name_ar }}</td>
-                                    <td>{{ $pat->getsType() }}</td>
-                                    <td>{{ $pat->d_start() }}</td>
-                                    <td>{{ $pat->note }}</td>
-                                    <td><span>{{ $pat->price }}</span></td>
-                                    <td>
-                                        @if($pat->cln_m_services->isNotEmpty())
-                                            <a href="{{ route('services.show', $pat->id) }}"
-                                               class="btn btn-sm btn-success"
-                                               title="استعراض الملف الطبي للزيارة"><i class="las la-eye"></i></a>
-                                        @else
-                                            <a href="{{ route('MedicalFile.create', ['visit' => $pat->id,'clinic' =>$pat->gnr_m_clinics->id,'patient'=>$pat->patient]) }}" class="btn btn-sm btn-primary-gradient"
-                                               title="اضافة ملف طبي للزيارة"><i class="las la-pen"></i></a>
-                                        @endif
-                                        <a href="{{ route('visits.edit', $pat->id) }}" class="btn btn-sm btn-info"
-                                           title="تعديل"><i class="las la-edit"></i></a>
-
-                                            <form action="{{ route('visits.destroy','test') }}"
-                                                  style="display:inline" method="post"
-                                                  enctype="multipart/form-data">
-                                                @csrf
-                                                @method('DELETE')
-                                                <input type="hidden" name="input" id="user_id" value="{{ $pat->id }}">
-                                                <button type="submit" class="btn btn-sm btn-danger"><i
-                                                        class="las la-trash"></i></button>
-                                            </form>
-                                    </td>
-                                </tr>
-                            @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+    <section class="hn-panel">
+        <div class="hn-panel-header"><div><h2 class="hn-panel-title">سجل الزيارات</h2><p class="hn-panel-subtitle">{{ number_format($visits->count()) }} زيارة مسجلة</p></div></div>
+        @if($visits->isEmpty())
+            <x-ui.empty title="لا توجد زيارات" description="يمكنك إنشاء أول زيارة لهذا المريض." icon="fe-activity" />
+        @else
+            <div class="hn-table-responsive">
+                <table class="hn-table">
+                    <thead><tr><th>العيادة</th><th>بداية الزيارة</th><th>الحالة</th><th>الملاحظات</th><th>التكلفة</th><th>الإجراءات</th></tr></thead>
+                    <tbody>
+                    @foreach($visits as $visit)
+                        <tr>
+                            <td><strong>{{ optional($visit->gnr_m_clinics)->name_ar ?? 'عيادة غير محددة' }}</strong></td>
+                            <td>{{ $visit->d_start ? \Carbon\Carbon::createFromTimestamp((int)$visit->d_start)->format('Y/m/d - h:i A') : '—' }}</td>
+                            <td><span class="hn-badge {{ (string)$visit->type === '1' ? 'hn-badge-success' : 'hn-badge-pending' }}">{{ (string)$visit->type === '1' ? 'مكتملة' : 'قيد المتابعة' }}</span></td>
+                            <td>{{ \Illuminate\Support\Str::limit($visit->note ?: 'لا توجد ملاحظات', 45) }}</td>
+                            <td>{{ $visit->price !== null ? number_format((float)$visit->price, 2) : '—' }}</td>
+                            <td><div class="hn-row-actions">
+                                @if($visit->cln_m_services->isNotEmpty())
+                                    <a href="{{ route('services.show', $visit->id) }}" class="hn-icon-btn" title="عرض الملف الطبي" aria-label="عرض الملف الطبي"><i class="fe fe-file-text"></i></a>
+                                @else
+                                    <a href="{{ route('MedicalFile.create', ['visit' => $visit->id, 'clinic' => optional($visit->gnr_m_clinics)->id, 'patient' => $visit->patient]) }}" class="hn-icon-btn" title="إنشاء ملف طبي" aria-label="إنشاء ملف طبي"><i class="fe fe-file-plus"></i></a>
+                                @endif
+                                <a href="{{ route('visits.edit', $visit->id) }}" class="hn-icon-btn" title="تعديل الزيارة" aria-label="تعديل الزيارة"><i class="fe fe-edit-2"></i></a>
+                                <form action="{{ route('visits.destroy', $visit->id) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف الزيارة؟')">@csrf @method('DELETE')<input type="hidden" name="input" value="{{ $visit->id }}"><button type="submit" class="hn-icon-btn hn-icon-btn-danger" title="حذف الزيارة" aria-label="حذف الزيارة"><i class="fe fe-trash-2"></i></button></form>
+                            </div></td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
             </div>
-        </div>
-        <!--/div-->
+        @endif
+    </section>
 
-        <!-- Modal effects -->
-        <div class="modal" id="modaldemo9">
-            <div class="modal-dialog modal-dialog-centered" role="document">
-                <div class="modal-content modal-content-demo">
-                    <div class="modal-header">
-                        <h6 class="modal-title">اضافة زيارة</h6>
-                        <button aria-label="Close" class="close"
-                                data-dismiss="modal" type="button"><span aria-hidden="true">&times;</span></button>
+    <div class="modal fade" id="new-visit-modal" tabindex="-1" role="dialog" aria-labelledby="new-visit-title" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <form action="{{ route('visits.store') }}" method="POST">
+                    @csrf
+                    <input type="hidden" name="user_id" value="{{ $patient }}">
+                    <div class="modal-header"><h5 class="modal-title" id="new-visit-title">إضافة زيارة جديدة</h5><button type="button" class="close" data-dismiss="modal" aria-label="إغلاق"><span aria-hidden="true">&times;</span></button></div>
+                    <div class="modal-body">
+                        <div class="form-group"><label for="visit-clinic">العيادة <span class="text-danger">*</span></label><select id="visit-clinic" name="clinic" class="form-control" required><option value="">اختر العيادة</option>@foreach($clinics as $clinic)<option value="{{ $clinic->id }}">{{ $clinic->name_ar }}</option>@endforeach</select></div>
+                        <div class="form-group"><label for="visit-note">ملاحظات الزيارة</label><textarea id="visit-note" name="note" class="form-control" rows="3" placeholder="أدخل ملاحظة مختصرة"></textarea></div>
+                        <div class="form-group mb-0"><label for="visit-price">التكلفة</label><input id="visit-price" name="price" class="form-control" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div>
                     </div>
-                    <form action="{{ route('visits.store') }}" method="post" enctype="multipart/form-data">
-                        @csrf
-                        @method('POST')
-                        <div class="modal-body">
-                            <p>هل تريد اضافة زيارة؟</p><br>
-                            <input type="hidden" name="user_id" id="user_id" value="{{$patient}}">
-
-                            <x-forms.label id=""><span class="">اختر عيادة</span></x-forms.label>
-                            <select name="clinic" class="form-control select2" requiredInput="*">
-                                <option></option>
-                                @foreach ($clinics as $key => $value)
-                                    <option value="{{$value->id}}"/>{{ $value->name_ar }}</option>
-                                @endforeach
-                            </select>
-
-                            <x-forms.label id=""><span class="">ادخل ملاحظة </span></x-forms.label>
-                            <input class="form-control" name="note" id="" type="text">
-                            <x-forms.input label="التكلفة: " oninvalid="this.setCustomValidity('يجب ان تدخل رقم')" onchange="this.setCustomValidity('')" inputmode="numeric" pattern="[0-9]*"  class="" name="price"  />
-
-
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-dismiss="modal">الغاء</button>
-                            <button type="submit" class="btn btn-danger">تاكيد</button>
-                        </div>
-                    </form>
-                </div>
-
+                    <div class="modal-footer"><button type="button" class="hn-btn hn-btn-light" data-dismiss="modal">إلغاء</button><button type="submit" class="hn-btn hn-btn-primary"><i class="fe fe-check"></i> حفظ الزيارة</button></div>
+                </form>
             </div>
         </div>
     </div>
-
-    </div>
-    <!-- /row -->
-    </div>
-    <!-- Container closed -->
-    </div>
-    <!-- main-content closed -->
-@endsection
-@section('js')
-    <!-- Internal Data tables -->
-
-
-    <script>
-
-    </script>
-    <script src="{{ URL::asset('assets/plugins/datatable/js/jquery.dataTables.min.js') }}"></script>
-    <script src="{{ URL::asset('assets/plugins/datatable/js/dataTables.dataTables.min.js') }}"></script>
-    <script src="{{ URL::asset('assets/plugins/datatable/js/dataTables.responsive.min.js') }}"></script>
-    <script src="{{ URL::asset('assets/plugins/datatable/js/responsive.dataTables.min.js') }}"></script>
-    <script src="{{ URL::asset('assets/plugins/datatable/js/jquery.dataTables.js') }}"></script>
-    <script src="{{ URL::asset('assets/plugins/datatable/js/dataTables.bootstrap4.js') }}"></script>
-    <script src="{{ URL::asset('assets/plugins/datatable/js/dataTables.buttons.min.js') }}"></script>
-    <script src="{{ URL::asset('assets/plugins/datatable/js/dataTables.responsive.min.js') }}"></script>
-    <script src="{{ URL::asset('assets/plugins/datatable/js/responsive.bootstrap4.min.js') }}"></script>
-    <!--Internal  Datatable js -->
-    <script src="{{ URL::asset('assets/js/table-data.js') }}"></script>
-    <!--Internal  Notify js -->
-    <script src="{{ URL::asset('assets/plugins/notify/js/notifIt.js') }}"></script>
-    <script src="{{ URL::asset('assets/plugins/notify/js/notifit-custom.js') }}"></script>
-    <!-- Internal Modal js-->
-    <script src="{{ URL::asset('assets/js/modal.js') }}"></script>
-
-    <script>
-
-        $("#priceID").click(function(e){
-            //e.preventDefault();
-            console.log("sadad");
-            // $( this ).replaceWith('<x-forms.input id="" hidden="" name="visit" :value="'+$(this).text()+'" />');
-        });
-        $('#modaldemo8').on('show.bs.modal', function (event) {
-            console.log("sadad");
-            var button = $(event.relatedTarget)
-            var user_id = button.data('user_id')
-            var modal = $(this)
-            modal.find('.modal-body #user_id').val(user_id);
-        })
-        $('#modaldemo9').on('show.bs.modal', function (event) {
-            console.log("sadad");
-            var button = $(event.relatedTarget)
-            var user_id = button.data('user_id')
-            var modal = $(this)
-            modal.find('.modal-body #user_id').val(user_id);
-        })
-    </script>
-
-
 @endsection

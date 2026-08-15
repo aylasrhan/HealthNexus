@@ -22,6 +22,7 @@ class AppServiceProvider extends ServiceProvider
 
 public function boot()
 {
+    Paginator::useBootstrapFour();
     DB::statement("SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");
 }
 }

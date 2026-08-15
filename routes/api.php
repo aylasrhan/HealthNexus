@@ -23,19 +23,19 @@ use Illuminate\Support\Facades\Route;
 */
 
 ##################################### Auth Apis #########################################
-Route::post('register', [ApiAuthController::class, 'register']);
-Route::post('Api_login', [ApiAuthController::class, 'login']);
+Route::post('register', [ApiAuthController::class, 'register'])->middleware('throttle:5,1');
+Route::post('Api_login', [ApiAuthController::class, 'login'])->middleware('throttle:10,1');
 Route::post('areas', [ApiPatientController::class, 'areas']);
 Route::get('get-nationalities', [ApiAuthController::class, 'getNationalities']);
 Route::get('cities', [ApiAuthController::class, 'getCities']);
 Route::get('clinics', [ApiAuthController::class, 'getClinics']);
-Route::post('accept-appointment', [ApiAppointmentController::class, 'accept_appointment']);
-Route::post('reject-appointment', [ApiAppointmentController::class, 'reject_appointment']);    // Route::get('visits', [ApiVisitsController::class,'pat_visits']);
     Route::get('famous_doctors', [ApiPatientController::class, 'famous_doctors']);
 Route::get('/booked-times', [ApiAppointmentController::class, 'get_booked_times']);
 Route::middleware('auth:api')->group(function () {
-    Route::post('email/verify', [ApiAuthController::class, 'verify']);
-    Route::get('email/resend', [ApiAuthController::class, 'resend']);
+    Route::post('accept-appointment', [ApiAppointmentController::class, 'accept_appointment'])->middleware('throttle:20,1');
+    Route::post('reject-appointment', [ApiAppointmentController::class, 'reject_appointment'])->middleware('throttle:20,1');
+    Route::post('email/verify', [ApiAuthController::class, 'verify'])->middleware('throttle:5,1');
+    Route::post('email/resend', [ApiAuthController::class, 'resend'])->middleware('throttle:3,1');
     Route::post('logout', [ApiAuthController::class, 'logout']);
     Route::get('home', [ApiAuthController::class, 'home']);
     Route::get('profile', [ApiAuthController::class, 'profile']);
@@ -75,8 +75,6 @@ Route::middleware('auth:api')->group(function () {
 // اضافة من عندي
 
 });
-
-
 
 
 

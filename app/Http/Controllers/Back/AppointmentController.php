@@ -33,12 +33,38 @@ class AppointmentController extends Controller
 //        return $request->d_name;
         try {
             $user = auth()->user();
-            $role = $user->roles_name;
+            $role = $user->primarySystemRole();
             $appointments = $this->AppointmentRepository->index();
             return view('back.appointment.index', compact('appointments','role'));
         } catch (\Exception $ex) {
             return redirect()->back()->with(['error' => $ex]);
         }
+    }
+
+    public function confirm(Appointment $appointment)
+    {
+        $this->authorize('accept', $appointment);
+
+        if ((int) $appointment->status !== 0) {
+            return back()->with('error', 'لا يمكن تأكيد موعد تمت معالجته مسبقًا.');
+        }
+
+        $this->AppointmentRepository->accept_appoint($appointment->id);
+
+        return back()->with('success', 'تم تأكيد الموعد بنجاح.');
+    }
+
+    public function cancel(Appointment $appointment)
+    {
+        $this->authorize('cancel', $appointment);
+
+        if ((int) $appointment->status === 2) {
+            return back()->with('error', 'الموعد ملغي بالفعل.');
+        }
+
+        $this->AppointmentRepository->cancel_appoint($appointment->id);
+
+        return back()->with('success', 'تم إلغاء الموعد بنجاح.');
     }
 
     public function appointment_create(){
@@ -48,7 +74,7 @@ class AppointmentController extends Controller
     public function patient_appointments($id)
     {
         $user = auth()->user();
-        $role = $user->roles_name;
+        $role = $user->primarySystemRole();
         $appointments = $this->AppointmentRepository->patient_appoi($id);
         return view('back.appointment.index', compact('appointments','role'));
     }

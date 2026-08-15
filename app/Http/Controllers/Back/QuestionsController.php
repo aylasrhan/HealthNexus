@@ -22,23 +22,28 @@ class QuestionsController extends Controller
     }
     public function index()
     {
+        abort_unless(auth()->user()->hasSystemRole('admin', 'super_admin', 'reception', 'receptionist', 'secretary'), 403);
         $questions = $this->QuestionsRepository->index();
         return view('back.questions.index', compact('questions'));
     }
 
     public function show(string $id)
     {
-
+        $allowed = auth()->user()->hasSystemRole('admin', 'super_admin', 'reception', 'receptionist', 'secretary')
+            || (auth()->user()->hasSystemRole('doctor') && (int) auth()->user()->doctor?->subgrp === (int) $id);
+        abort_unless($allowed, 403);
         $questions = $this->QuestionsRepository->show($id);
         return view('back.questions.show', compact('questions'));
     }
 
     public function answerTheQ(string $section){
+        abort_unless(auth()->user()->hasSystemRole('doctor') && (int) auth()->user()->doctor?->subgrp === (int) $section, 403);
         $questions = $this->QuestionsRepository->answerTheQ($section);
         return view('back.questions.show', compact('questions'));
     }
 
     public function userQuestions(string $user){
+        abort_unless((int) auth()->id() === (int) $user || auth()->user()->hasSystemRole('admin', 'super_admin'), 403);
         $questions = $this->QuestionsRepository->userQuestions($user);
         return view('back.questions.show', compact('questions'));
     }
@@ -69,7 +74,8 @@ class QuestionsController extends Controller
     public function edit(string $id)
     {
         $section = gnr_m_clinics::all();
-        $qu = Question::find($id);
+        $qu = Question::findOrFail($id);
+        $this->authorize('update', $qu);
         return view('back.questions.edit',compact('section','qu'));
     }
 
@@ -79,6 +85,13 @@ class QuestionsController extends Controller
 
     public function update(Request $request, string $id)
     {
+        $question = Question::findOrFail($id);
+        $this->authorize('update', $question);
+        $request->validate([
+            'Question' => ['required', 'string', 'max:2000'],
+            'answer' => ['nullable', 'string', 'max:4000'],
+            'section' => ['required', 'integer', 'exists:gnr_m_clinics,id'],
+        ]);
         try {
             $Update = $this->QuestionsRepository->update($request,$id);
             return redirect()->route('questions.show', $request->section)->with('success', ' updated!');
@@ -95,8 +108,11 @@ class QuestionsController extends Controller
      */
     public function destroy(Request $request)
     {
+        $question = Question::findOrFail($request->input('input', $request->route('question')));
+        $this->authorize('delete', $question);
         try {
-            return $this->adsRepository->destroy($request);
+            $question->delete();
+            return redirect()->back()->with('success', 'تم حذف السؤال بنجاح.');
         } catch (\Exception $ex) {
             return ['result' =>"يوجد خطأ ما",'data' => $ex];
 

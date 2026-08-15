@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Arr;
 class UserController extends Controller
 {
     /**
@@ -48,6 +49,7 @@ class UserController extends Controller
 
         $input = $request->all();
         $input['password'] = Hash::make($input['password']);
+        $input['roles_name'] = [User::canonicalRoleName((string) Arr::first(Arr::wrap($request->roles)))];
         $user = User::create($input);
         $user->assignRole($request->roles);
         return redirect()->route('users.index')
@@ -103,6 +105,7 @@ class UserController extends Controller
         //DB::table('model_has_roles')->where('model_id',$id)->delete();
        // $user->model_has_roles()->attach($request->input('roles'));
         $user->syncRoles($request->roles);
+        $user->update(['roles_name' => [User::canonicalRoleName((string) Arr::first(Arr::wrap($request->roles)))]]);
         return redirect()->route('users.index')
             ->with('success','User updated successfully');
     }
@@ -121,6 +124,6 @@ class UserController extends Controller
 
     private function array_except(array $input, array $array)
     {
+        return Arr::except($input, $array);
     }
 }
-
