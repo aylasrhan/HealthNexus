@@ -68,7 +68,9 @@ Route::middleware('auth')->group(callback: function () {
     // Route::get('visits/MyVisits',  [Cln_x_visitsController::class, 'getVisitForDoctor']);
 
     // Route::get('/services/{id}/{clinic}/edit', [Cln_m_servicesController::class])->name("services.edit");
-    Route::resource('services', Cln_m_servicesController::class)->middleware('staff');
+    Route::get('medical-files', [Medical_fileController::class, 'index'])->name('medical-files.index');
+    Route::get('services/{service}', [Cln_m_servicesController::class, 'show'])->name('services.show');
+    Route::resource('services', Cln_m_servicesController::class)->except(['index', 'show'])->middleware('staff');
     Route::resource('medical', Cln_m_medical_hisController::class)->middleware('staff');
     Route::resource('com', Cln_x_prev_comController::class)->middleware('medical.visit');
     Route::resource('str', Cln_x_prev_strController::class)->middleware('medical.visit');
@@ -80,8 +82,8 @@ Route::middleware('auth')->group(callback: function () {
     Route::get('disease-analytics', [DiseaseAnalyticsController::class, 'index'])->name('analytics.diseases')->middleware('staff');
     Route::post('disease-analytics/export', [DiseaseAnalyticsController::class, 'export'])->name('analytics.diseases.export')->middleware('staff');
     Route::resource('wallet', WalletController::class)->only(['index'])->middleware('staff');
-    Route::resource('ads', AdsController::class)->middleware('staff');
-    Route::resource('review', ReviewsController::class)->middleware('staff');
+    Route::resource('ads', AdsController::class)->middleware('role:super_admin');
+    Route::resource('review', ReviewsController::class)->middleware('role:super_admin');
     Route::resource('questions', QuestionsController::class);
     Route::get('/questions/{section}/answer', [QuestionsController::class,'answerTheQ'])->name("questions.answer");
     Route::get('/questions/user/{user}', [QuestionsController::class,'userQuestions'])->name("questions.user");

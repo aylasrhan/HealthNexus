@@ -17,4 +17,4 @@
 <link href="{{URL::asset('assets/css-rtl/style-dark.css')}}" rel="stylesheet">
 <!---Skinmodes css-->
 <link href="{{URL::asset('assets/css-rtl/skin-modes.css')}}" rel="stylesheet">
-<link href="{{URL::asset('assets/css/healthnexus.css')}}" rel="stylesheet">
+<link href="{{ URL::asset('assets/css/healthnexus.css') }}?v={{ filemtime(public_path('assets/css/healthnexus.css')) }}" rel="stylesheet">
