@@ -88,7 +88,7 @@ class Cln_x_visitsController extends Controller
         $patientModel = gnr_m_patients::findOrFail($patient);
         $this->authorize('view', $patientModel);
         $clinics = gnr_m_clinics::all();
-        $visits = cln_x_visits::with('gnr_m_clinics')->where('patient','=',$patient)->get();
+        $visits = cln_x_visits::with(['gnr_m_clinics', 'invoice'])->where('patient','=',$patient)->get();
         return view('back.visits.index', compact('patient','visits','clinics'));
     }
 

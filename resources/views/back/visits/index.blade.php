@@ -17,7 +17,7 @@
         @else
             <div class="hn-table-responsive">
                 <table class="hn-table">
-                    <thead><tr><th>العيادة</th><th>بداية الزيارة</th><th>الحالة</th><th>الملاحظات</th><th>التكلفة</th><th>الإجراءات</th></tr></thead>
+                    <thead><tr><th>العيادة</th><th>بداية الزيارة</th><th>الحالة</th><th>الملاحظات</th><th>الفاتورة</th><th>الإجراءات</th></tr></thead>
                     <tbody>
                     @foreach($visits as $visit)
                         <tr>
@@ -25,7 +25,7 @@
                             <td>{{ $visit->d_start ? \Carbon\Carbon::createFromTimestamp((int)$visit->d_start)->format('Y/m/d - h:i A') : '—' }}</td>
                             <td><span class="hn-badge {{ (string)$visit->type === '1' ? 'hn-badge-success' : 'hn-badge-pending' }}">{{ (string)$visit->type === '1' ? 'مكتملة' : 'قيد المتابعة' }}</span></td>
                             <td>{{ \Illuminate\Support\Str::limit($visit->note ?: 'لا توجد ملاحظات', 45) }}</td>
-                            <td>{{ $visit->price !== null ? number_format((float)$visit->price, 2) : '—' }}</td>
+                            <td>@if($visit->invoice)@if(auth()->user()->hasSystemRole('super_admin','secretary'))<a href="{{ route('invoices.show',$visit->invoice) }}"><strong>{{ $visit->invoice->number }}</strong></a>@else<strong>{{ $visit->invoice->number }}</strong>@endif<div class="text-muted">{{ number_format($visit->invoice->total,2) }}</div>@elseif(auth()->user()->hasSystemRole('super_admin','secretary'))<form method="POST" action="{{ route('invoices.store',$visit) }}">@csrf<button class="hn-btn hn-btn-light hn-btn-sm" type="submit">إنشاء فاتورة</button></form>@else—@endif</td>
                             <td><div class="hn-row-actions">
                                 @if($visit->cln_m_services->isNotEmpty())
                                     <a href="{{ route('services.show', $visit->id) }}" class="hn-icon-btn" title="عرض الملف الطبي" aria-label="عرض الملف الطبي"><i class="fe fe-file-text"></i></a>
@@ -53,7 +53,6 @@
                     <div class="modal-body">
                         <div class="form-group"><label for="visit-clinic">العيادة <span class="text-danger">*</span></label><select id="visit-clinic" name="clinic" class="form-control" required><option value="">اختر العيادة</option>@foreach($clinics as $clinic)<option value="{{ $clinic->id }}">{{ $clinic->name_ar }}</option>@endforeach</select></div>
                         <div class="form-group"><label for="visit-note">ملاحظات الزيارة</label><textarea id="visit-note" name="note" class="form-control" rows="3" placeholder="أدخل ملاحظة مختصرة"></textarea></div>
-                        <div class="form-group mb-0"><label for="visit-price">التكلفة</label><input id="visit-price" name="price" class="form-control" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></div>
                     </div>
                     <div class="modal-footer"><button type="button" class="hn-btn hn-btn-light" data-dismiss="modal">إلغاء</button><button type="submit" class="hn-btn hn-btn-primary"><i class="fe fe-check"></i> حفظ الزيارة</button></div>
                 </form>

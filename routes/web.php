@@ -23,7 +23,7 @@ use App\Http\Controllers\Back\ReportsController;
 use App\Http\Controllers\Back\ReviewsController;
 use App\Http\Controllers\Back\RoleController;
 use App\Http\Controllers\Back\UserController;
-use App\Http\Controllers\Back\WalletController;
+use App\Http\Controllers\Back\InvoiceController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
@@ -74,6 +74,7 @@ Route::middleware('auth')->group(callback: function () {
     Route::get('consultations/medical-history/search', [Medical_fileController::class, 'searchMedicalHistory'])->name('consultations.medical-history.search');
     Route::get('consultations/{visit}/edit', [Medical_fileController::class, 'editConsultation'])->name('consultations.edit');
     Route::put('consultations/{visit}', [Medical_fileController::class, 'saveConsultation'])->name('consultations.update');
+    Route::post('consultations/{visit}/reopen', [Medical_fileController::class, 'reopenConsultation'])->name('consultations.reopen');
     Route::get('services/{service}', [Cln_m_servicesController::class, 'show'])->name('services.show');
     Route::resource('services', Cln_m_servicesController::class)->except(['index', 'show'])->middleware('medical.visit');
     Route::resource('medical', Cln_m_medical_hisController::class)->middleware('medical.visit');
@@ -86,7 +87,17 @@ Route::middleware('auth')->group(callback: function () {
     Route::resource('report', ReportsController::class)->only(['index', 'store'])->middleware('staff');
     Route::get('disease-analytics', [DiseaseAnalyticsController::class, 'index'])->name('analytics.diseases')->middleware('staff');
     Route::post('disease-analytics/export', [DiseaseAnalyticsController::class, 'export'])->name('analytics.diseases.export')->middleware('staff');
-    Route::resource('wallet', WalletController::class)->only(['index'])->middleware('staff');
+    Route::get('wallet', fn () => redirect()->route('invoices.index'))->name('wallet.index')->middleware('staff');
+    Route::middleware('staff')->group(function () {
+        Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices.index');
+        Route::get('invoices-settings/service-prices', [InvoiceController::class, 'servicePrices'])->name('invoices.service-prices');
+        Route::put('invoices-settings/service-prices', [InvoiceController::class, 'updateServicePrices'])->name('invoices.service-prices.update');
+        Route::post('invoices/visits/{visit}', [InvoiceController::class, 'store'])->name('invoices.store');
+        Route::get('invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');
+        Route::put('invoices/{invoice}', [InvoiceController::class, 'update'])->name('invoices.update');
+        Route::post('invoices/{invoice}/payments', [InvoiceController::class, 'payment'])->name('invoices.payments.store');
+        Route::get('invoices/{invoice}/pdf', [InvoiceController::class, 'pdf'])->name('invoices.pdf');
+    });
     Route::resource('ads', AdsController::class)->middleware('role:super_admin');
     Route::resource('review', ReviewsController::class)->middleware('role:super_admin');
     Route::resource('questions', QuestionsController::class);

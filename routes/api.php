@@ -7,6 +7,8 @@ use App\Http\Controllers\Front\ApiPatientController;
 use App\Http\Controllers\Front\ApiDoctorController;
 use App\Http\Controllers\Front\ApiQuestionController;
 use App\Http\Controllers\Front\ApiVisitsController;
+use App\Http\Controllers\Front\ApiPrescriptionController;
+use App\Http\Controllers\Front\ApiInvoiceController;
 use App\Http\Controllers\VerificationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -48,6 +50,11 @@ Route::middleware('auth:api')->group(function () {
     Route::post('search', [ApiDoctorController::class, 'search']);
     Route::post('review', [ApiDoctorController::class, 'review']);
     Route::get('visits', [ApiVisitsController::class,'pat_visits']);
+    Route::get('visits/{visit}/prescription', [ApiPrescriptionController::class, 'show']);
+    Route::get('visits/{visit}/prescription/pdf', [ApiPrescriptionController::class, 'pdf']);
+    Route::get('invoices', [ApiInvoiceController::class, 'index']);
+    Route::get('invoices/{invoice}', [ApiInvoiceController::class, 'show']);
+    Route::get('invoices/{invoice}/pdf', [ApiInvoiceController::class, 'pdf']);
     Route::post('medical-info', [ApiMedical_fileController::class, 'medical_info']);
 
     ################################# Appointment Apis ########################################
@@ -75,7 +82,5 @@ Route::middleware('auth:api')->group(function () {
 // اضافة من عندي
 
 });
-
-
 
 

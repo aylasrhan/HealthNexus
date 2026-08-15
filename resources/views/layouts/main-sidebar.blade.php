@@ -32,7 +32,7 @@
 
             @if($isManagement)
                 <li class="side-item side-item-category">التشغيل والتقارير</li>
-                <li class="slide"><a class="side-menu__item {{ request()->routeIs('wallet.*') ? 'active' : '' }}" href="{{ route('wallet.index') }}"><i class="side-menu__icon fe fe-credit-card"></i><span class="side-menu__label">المحافظ</span></a></li>
+                <li class="slide"><a class="side-menu__item {{ request()->routeIs('invoices.*') ? 'active' : '' }}" href="{{ route('invoices.index') }}"><i class="side-menu__icon fe fe-file-text"></i><span class="side-menu__label">الفواتير</span></a></li>
                 <li class="slide"><a class="side-menu__item {{ request()->routeIs('questions.*') ? 'active' : '' }}" href="{{ route('questions.index') }}"><i class="side-menu__icon fe fe-message-circle"></i><span class="side-menu__label">أسئلة المرضى</span></a></li>
                 <li class="slide"><a class="side-menu__item {{ request()->routeIs('report.*') ? 'active' : '' }}" href="{{ route('report.index') }}"><i class="side-menu__icon fe fe-bar-chart-2"></i><span class="side-menu__label">التقارير</span></a></li>
                 <li class="slide"><a class="side-menu__item {{ request()->routeIs('analytics.*') ? 'active' : '' }}" href="{{ route('analytics.diseases') }}"><i class="side-menu__icon fe fe-map"></i><span class="side-menu__label">تحليل الأمراض</span></a></li>

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class cln_m_services extends Model
 {
     use HasFactory;
-    protected $fillable = ['clinic', 'name_ar','name_en'];
+    protected $fillable = ['clinic', 'name_ar','name_en','price'];
     protected $table = 'cln_m_services';
 
     public function gnr_m_clinics()
