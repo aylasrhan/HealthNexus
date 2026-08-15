@@ -18,7 +18,7 @@ class ApiMedical_fileController extends Controller
 
     public function medical_info(Request $request):JsonResponse{
         $validator = Validator::make($request->all(), [
-            'visit' => 'required',
+            'visit' => 'required|integer|exists:cln_x_visits,id',
         ]);
 
         if ($validator->fails()) {
@@ -27,8 +27,9 @@ class ApiMedical_fileController extends Controller
         $dia = "" ;
         $dia10 = "";
         $cln_m_medical_his_cats = cln_m_medical_his_cats::all();
-        $visit = cln_x_visits::find($request->visit);
-        $patient = gnr_m_patients::find($visit->patient);
+        $visit = cln_x_visits::findOrFail($request->integer('visit'));
+        $this->authorize('view', $visit);
+        $patient = gnr_m_patients::findOrFail($visit->patient);
         $visitID = $visit->id;
         $patientId  = $visit->patient;
         $clinic = $visit->clinic;

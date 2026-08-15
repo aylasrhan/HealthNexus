@@ -42,8 +42,8 @@ class ApiQuestionController extends Controller
         $user = auth()->user();
         $userId = $user->id;
         $validator = Validator::make($request->all(), [
-            'Question' => 'required',
-            'section' => 'required',
+            'Question' => 'required|string|max:2000',
+            'section' => 'required|integer|exists:gnr_m_clinics,id',
         ]);
 
         if ($validator->fails()) {
@@ -59,8 +59,9 @@ class ApiQuestionController extends Controller
             });
             DB::commit();
             return $this->returnSuccess("D00", "Question send successfully..");
-        } catch (\Exception $ex) {
-            return $this->returnError("V00", $ex->getMessage());
+        } catch (\Throwable $ex) {
+            report($ex);
+            return $this->returnError("D01", 'Unable to submit the question.');
         }
     }
 
@@ -69,14 +70,18 @@ class ApiQuestionController extends Controller
         $user = auth()->user();
         $userId = $user->id;
         $validator = Validator::make($request->all(), [
-            'answer' => 'required',
-            'id' => 'required',
+            'answer' => 'required|string|max:4000',
+            'id' => 'required|integer|exists:question,id',
         ]);
 
         if ($validator->fails()) {
             return $this->returnError("V00", $validator->errors());
         }
         $question = Question::find($request->id);
+        $doctor = doctors::with('gnr_m_clinics')->where('user_id', $userId)->first();
+        if (!$doctor || (int) $doctor->gnr_m_clinics->id !== (int) $question?->section) {
+            abort(403);
+        }
         if (!$question) {
             return $this->returnError("D01", "question is not found..");
         } else {
@@ -100,6 +105,7 @@ class ApiQuestionController extends Controller
 
     public function doc_quests():JsonResponse{
         $user = auth()->user();
+        abort_unless($user->hasSystemRole('doctor'), 403);
         $userId = $user->id;
         $doctor = doctors::with('gnr_m_clinics')->where('user_id',$userId)->first();
         if (!$doctor){

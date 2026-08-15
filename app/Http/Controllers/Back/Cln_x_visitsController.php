@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Back;
 use App\Http\Controllers\Controller;
 use App\Models\back\cln_x_visits;
 use App\Models\back\gnr_m_clinics;
+use App\Models\back\gnr_m_patients;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Query\JoinClause;
@@ -34,6 +35,7 @@ class Cln_x_visitsController extends Controller
      * */
     public function index()
     {
+        $this->authorize('viewAny', cln_x_visits::class);
         $visits = DB::table('cln_x_visits')
             ->join('cln_x_prev_com', function (JoinClause $join) {
                 //not
@@ -81,6 +83,8 @@ class Cln_x_visitsController extends Controller
 
     public function show($patient)
     {
+        $patientModel = gnr_m_patients::findOrFail($patient);
+        $this->authorize('view', $patientModel);
         $clinics = gnr_m_clinics::all();
         $visits = cln_x_visits::with('gnr_m_clinics')->where('patient','=',$patient)->get();
         return view('back.visits.index', compact('patient','visits','clinics'));
@@ -88,6 +92,14 @@ class Cln_x_visitsController extends Controller
 
     public function store(Request $request)
     {
+        $validated = $request->validate([
+            'user_id' => ['required', 'integer', 'exists:gnr_m_patients,id'],
+            'clinic' => ['required', 'integer', 'exists:gnr_m_clinics,id'],
+            'note' => ['nullable', 'string', 'max:2000'],
+            'price' => ['nullable', 'numeric', 'min:0'],
+        ]);
+        $patient = gnr_m_patients::findOrFail($validated['user_id']);
+        $this->authorize('createForPatient', [cln_x_visits::class, $patient]);
         //dd($request);
         try {
             DB::transaction(function () use ($request) {
@@ -115,11 +127,19 @@ class Cln_x_visitsController extends Controller
     {
         $clinics = gnr_m_clinics::all();
         $visit = cln_x_visits::findOrFail($id);
+        $this->authorize('update', $visit);
         return view('back.visits.edit',compact('visit','clinics'));
     }
 
     public function update(string $id,Request $request)
     {
+        $visit = cln_x_visits::findOrFail($id);
+        $this->authorize('update', $visit);
+        $request->validate([
+            'clinic' => ['required', 'integer', 'exists:gnr_m_clinics,id'],
+            'note' => ['nullable', 'string', 'max:2000'],
+            'price' => ['nullable', 'numeric', 'min:0'],
+        ]);
         try {
             DB::transaction(function () use ($id,$request) {
                 if($request->clinic != null){
@@ -143,7 +163,9 @@ class Cln_x_visitsController extends Controller
 
     public function destroy(Request $request)
     {
-        $visit = cln_x_visits::find($request->input);
+        $request->validate(['input' => ['required', 'integer', 'exists:cln_x_visits,id']]);
+        $visit = cln_x_visits::findOrFail($request->input);
+        $this->authorize('delete', $visit);
         $services = $visit->cln_m_services;
         $com = $visit->cln_x_prev_com;
         try {

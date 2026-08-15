@@ -3,25 +3,25 @@
 namespace App\Traits;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 trait UploadFileTrait
 {
 
     public function UploadFile(Request $request,$FieldName,$folderName){
-        $name = $request->file($FieldName)->getClientOriginalName();
-        $path = $request->file($FieldName)->store($folderName,"imgFile");
-        return $path;
+        return $request->file($FieldName)->store($folderName, 'imgFile');
     }
 
     public function ReplaceImg($objectModel,$request,$FieldName,$folderName){
-        $new_image = '';
-        $old_image = $objectModel;
-        if($old_image){
-            unlink(public_path('img/'.$old_image));
+        if (!$request->hasFile($FieldName)) {
+            return $objectModel;
         }
-        if ($request->hasFile($FieldName)){
-            $new_image = $this->UploadFile($request,$FieldName,$folderName);
+
+        $newImage = $this->UploadFile($request, $FieldName, $folderName);
+        if ($objectModel) {
+            Storage::disk('imgFile')->delete($objectModel);
         }
-        return $new_image;
+
+        return $newImage;
     }
 }
