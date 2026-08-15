@@ -1,3 +1,9 @@
+# HealthNexus
+
+المرجع الوظيفي والتقني المحدث للمشروع متوفر في [docs/PROJECT_INVENTORY_AR.md](docs/PROJECT_INVENTORY_AR.md).
+
+> قاعدة البيانات الفعلية موجودة في XAMPP، ولا يعتمد المشروع على migrations لإنشاء جداولها.
+
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
 <p align="center">

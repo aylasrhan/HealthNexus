@@ -29,7 +29,11 @@ class QuestionsRepository implements IQuestionsRepository
     }
 
     public function answerTheQ($Questions){ //get all Questions that need answer from  clinic that the doctor  auth is in
-        return Question::with('user')->where('section','=',$Questions)->where('answer' ,'=',null)->get();
+        return Question::with(['user', 'gnr_m_clinics'])
+            ->where('section', $Questions)
+            ->where(fn ($query) => $query->whereNull('answer')->orWhere('answer', ''))
+            ->orderByDesc('id')
+            ->get();
     }
 
     public function userQuestions($user){ //get all Questions that user insert

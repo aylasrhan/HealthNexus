@@ -11,7 +11,7 @@
 
 <section class="hn-panel mb-4">
     <div class="hn-panel-body">
-        <form method="GET" action="{{ route('analytics.diseases') }}" class="hn-analytics-filters">
+        <form method="GET" action="{{ route('analytics.diseases') }}" class="hn-analytics-filters" id="disease-analysis-form">
             <div class="hn-filter-disease"><label for="analytics-disease">المرض</label><select id="analytics-disease" name="disease" class="form-control" required>@foreach($diseases as $disease)<option value="{{ $disease->id }}" @selected((string)$filters['disease'] === (string)$disease->id)>{{ $disease->code }} — {{ $disease->name_ar ?: $disease->name_en }}</option>@endforeach</select></div>
             <div><label for="analytics-city">المحافظة / المدينة</label><select id="analytics-city" name="city" class="form-control"><option value="">كل المحافظات</option>@foreach($cities as $city)<option value="{{ $city->id }}" @selected((string)$filters['city'] === (string)$city->id)>{{ trim($city->name) }}</option>@endforeach</select></div>
             <div><label for="analytics-area">المنطقة</label><select id="analytics-area" name="area" class="form-control"><option value="">كل المناطق</option>@foreach($areas as $area)<option value="{{ $area->id }}" data-city="{{ $area->city }}" @selected((string)$filters['area'] === (string)$area->id)>{{ $area->name }}</option>@endforeach</select></div>
@@ -46,14 +46,37 @@
 
 <div class="hn-analytics-grid">
     <section class="hn-panel">
-        <div class="hn-panel-header"><div><h2 class="hn-panel-title">خريطة انتشار المرض</h2><p class="hn-panel-subtitle">حجم الدائرة يعكس عدد المرضى المسجلين في المحافظة.</p></div></div>
+        <div class="hn-panel-header"><div><h2 class="hn-panel-title">خريطة انتشار المرض</h2><p class="hn-panel-subtitle">بدّل بين دوائر الحالات والتلوين النسبي للمحافظات.</p></div></div>
         <div class="hn-panel-body">
             <div class="hn-map-toolbar">
+                <div class="hn-map-mode" role="group" aria-label="نوع الخريطة">
+                    <button type="button" class="hn-btn hn-btn-light is-active" id="map-mode-circles"><i class="fe fe-map-pin"></i> دوائر الانتشار</button>
+                    <button type="button" class="hn-btn hn-btn-light" id="map-mode-choropleth"><i class="fe fe-map"></i> تلوين المحافظات</button>
+                </div>
                 <button type="button" class="hn-btn hn-btn-light is-active" id="map-show-syria"><i class="fe fe-maximize-2"></i> عرض سورية بالكامل</button>
                 <button type="button" class="hn-btn hn-btn-light" id="map-show-governorate" @disabled(!$filters['city'])><i class="fe fe-map-pin"></i> عرض المحافظة المختارة</button>
             </div>
-            <div class="hn-syria-map" id="disease-map" aria-label="خريطة تفاعلية لانتشار المرض في سورية"></div>
-            <div class="hn-map-legend"><span><i></i> حجم الدائرة يعكس عدد المرضى</span><small><i class="fe fe-move ml-1"></i> حرّك الخريطة أو استخدم أزرار التكبير، واضغط على الدائرة للتفاصيل.</small></div>
+            <div class="hn-map-workspace">
+                <div class="hn-map-canvas">
+                    <div class="hn-syria-map" id="disease-map" aria-label="خريطة تفاعلية لانتشار المرض في سورية"></div>
+                    <div class="hn-syria-map d-none" id="disease-choropleth-map" aria-label="خريطة لونية لانتشار المرض حسب محافظات سورية"></div>
+                </div>
+                <aside class="hn-map-details" id="map-details" aria-live="polite">
+                    <div class="hn-map-details-empty" id="map-details-empty"><span class="hn-section-icon"><i class="fe fe-map-pin"></i></span><h3>تفاصيل المحافظة</h3><p>اضغط على محافظة أو دائرة لعرض مؤشرات الانتشار والتوزيع السكاني.</p></div>
+                    <div class="d-none" id="map-details-content">
+                        <div class="hn-map-details-head"><div><small>المحافظة المحددة</small><h3 id="detail-name">—</h3></div><button type="button" class="hn-icon-btn" id="detail-close" aria-label="إغلاق التفاصيل"><i class="fe fe-x"></i></button></div>
+                        <div class="hn-map-detail-kpis"><div><span>المرضى</span><strong id="detail-patients">0</strong></div><div><span>لكل 1000</span><strong id="detail-rate">0</strong></div><div><span>من الحالات</span><strong id="detail-share">0%</strong></div><div><span>الترتيب</span><strong id="detail-rank">—</strong></div></div>
+                        <div class="hn-map-comparison d-none" id="detail-comparison"><span>مقارنة بالفترة السابقة</span><strong id="detail-change">—</strong><small id="detail-previous"></small></div>
+                        <div class="hn-map-detail-section"><h4>المناطق الأعلى</h4><div id="detail-areas"></div></div>
+                        <div class="hn-map-detail-section"><h4>حسب الجنس</h4><div id="detail-genders"></div></div>
+                        <div class="hn-map-detail-section"><h4>حسب العمر</h4><div id="detail-ages"></div></div>
+                        <div class="hn-map-detail-actions"><button type="button" class="hn-btn hn-btn-primary" id="detail-apply"><i class="fe fe-filter"></i> تطبيق كفلتر</button><button type="button" class="hn-btn hn-btn-light" id="detail-reset"><i class="fe fe-maximize-2"></i> العودة إلى سورية</button></div>
+                    </div>
+                </aside>
+            </div>
+            <div class="hn-map-legend" id="circle-map-legend"><span><i></i> حجم الدائرة يعكس عدد المرضى</span><small><i class="fe fe-move ml-1"></i> اضغط على الدائرة للتفاصيل.</small></div>
+            <div class="hn-map-legend hn-color-legend d-none" id="choropleth-map-legend"><span id="color-legend-values"></span><small>يعتمد اللون على عدد المرضى ضمن الفلاتر الحالية.</small></div>
+            <small class="hn-map-source d-none" id="choropleth-map-source">حدود المحافظات: geoBoundaries / UN OCHA — CC BY 3.0 IGO.</small>
         </div>
     </section>
 
@@ -116,7 +139,62 @@
         'حلب':[36.20,37.16], 'الرقة':[35.95,39.01], 'دير الزور':[35.34,40.14], 'الحسكة':[36.50,40.75], 'القامشلي':[37.05,41.22]
     };
     var data = @json($cityDistribution ?? []);
+    var mapDetails = @json($mapDetails ?? []);
+    var selectedDetailId = null;
+    var detailsEmpty = document.getElementById('map-details-empty');
+    var detailsContent = document.getElementById('map-details-content');
+    function formatCount(value) { return Number(value || 0).toLocaleString('ar'); }
+    function renderBreakdown(containerId, rows, total) {
+        var container = document.getElementById(containerId); container.textContent = '';
+        if (!rows || !rows.length) { var empty = document.createElement('small'); empty.className = 'text-muted'; empty.textContent = 'لا توجد بيانات مكتملة'; container.appendChild(empty); return; }
+        rows.forEach(function (row) {
+            var item = document.createElement('div'); item.className = 'hn-map-breakdown';
+            var label = document.createElement('span'); label.textContent = row.label;
+            var value = document.createElement('strong'); value.textContent = Number(row.count) < 5 ? 'أقل من 5' : formatCount(row.count);
+            var bar = document.createElement('i'); bar.style.width = Math.max(4, Math.round(Number(row.count) * 100 / Math.max(1, total))) + '%';
+            item.appendChild(label); item.appendChild(value); item.appendChild(bar); container.appendChild(item);
+        });
+    }
+    function highlightSelection(cityId) {
+        Object.keys(governorateLayers || {}).forEach(function (id) {
+            var selected = String(id) === String(cityId);
+            governorateLayers[id].setStyle({fillOpacity:selected ? 1 : .25, opacity:selected ? 1 : .45, weight:selected ? 3 : 1.2, color:selected ? '#17333d' : '#fff'});
+        });
+        Object.keys(markers || {}).forEach(function (id) { markers[id].marker.setStyle({fillOpacity:String(id) === String(cityId) ? 1 : .28, opacity:String(id) === String(cityId) ? 1 : .45}); });
+    }
+    function selectGovernorate(cityId, zoom) {
+        var detail = mapDetails[String(cityId)]; if (!detail) return;
+        selectedDetailId = String(cityId); detailsEmpty.classList.add('d-none'); detailsContent.classList.remove('d-none');
+        document.getElementById('detail-name').textContent = detail.name;
+        document.getElementById('detail-patients').textContent = Number(detail.patients) < 5 ? 'أقل من 5' : formatCount(detail.patients);
+        document.getElementById('detail-rate').textContent = Number(detail.rate).toLocaleString('ar');
+        document.getElementById('detail-share').textContent = Number(detail.share).toLocaleString('ar') + '%';
+        document.getElementById('detail-rank').textContent = '#' + Number(detail.rank).toLocaleString('ar');
+        var comparisonBox = document.getElementById('detail-comparison');
+        comparisonBox.classList.toggle('d-none', detail.change === null || typeof detail.change === 'undefined');
+        if (detail.change !== null && typeof detail.change !== 'undefined') {
+            document.getElementById('detail-change').textContent = (Number(detail.change) > 0 ? '+' : '') + Number(detail.change).toLocaleString('ar') + '%';
+            document.getElementById('detail-previous').textContent = formatCount(detail.previous) + ' مريض في الفترة السابقة';
+            comparisonBox.classList.toggle('is-up', Number(detail.change) > 0); comparisonBox.classList.toggle('is-down', Number(detail.change) <= 0);
+        }
+        renderBreakdown('detail-areas', detail.areas, detail.patients); renderBreakdown('detail-genders', detail.genders, detail.patients); renderBreakdown('detail-ages', detail.ages, detail.patients);
+        highlightSelection(cityId);
+        document.querySelectorAll('.hn-map-location').forEach(function (row) { row.classList.toggle('is-active', String(row.dataset.cityId) === String(cityId)); });
+        if (zoom) {
+            if (activeMapMode === 'choropleth' && governorateLayers[cityId]) choroplethMap.fitBounds(governorateLayers[cityId].getBounds(), {padding:[28,28], maxZoom:9});
+            else if (markers[cityId]) map.flyTo(markers[cityId].point, 9, {duration:.7});
+            setToolbar('governorate');
+        }
+    }
+    function clearGovernorateSelection() {
+        selectedDetailId = null; detailsContent.classList.add('d-none'); detailsEmpty.classList.remove('d-none');
+        Object.keys(governorateLayers || {}).forEach(function (id) { governorateLayers[id].setStyle({fillOpacity:.92, opacity:1, weight:1.5, color:'#fff'}); });
+        Object.keys(markers || {}).forEach(function (id) { markers[id].marker.setStyle({fillOpacity:.82, opacity:1}); });
+        document.querySelectorAll('.hn-map-location').forEach(function (row) { row.classList.remove('is-active'); });
+        displaySyria();
+    }
     var mapElement = document.getElementById('disease-map');
+    var choroplethElement = document.getElementById('disease-choropleth-map');
     if (!mapElement || typeof L === 'undefined') return;
     var syriaBounds = L.latLngBounds([[32.30,35.55],[37.35,42.40]]);
     var map = L.map(mapElement, {zoomControl: false, minZoom: 6, maxZoom: 12, scrollWheelZoom: false, maxBounds: [[31.7,34.8],[38.0,43.0]], maxBoundsViscosity:.7});
@@ -145,35 +223,133 @@
         popup.appendChild(title); popup.appendChild(count); popup.appendChild(rate);
         marker.bindTooltip(name, {direction:'top', className:'hn-map-tooltip'}).bindPopup(popup).addTo(map);
         marker.on('click', function () {
-            document.querySelectorAll('.hn-map-location').forEach(function (row) { row.classList.remove('is-active'); });
-            var row = document.querySelector('.hn-map-location[data-city-id="' + item.city_id + '"]');
-            if (row) { row.classList.add('is-active'); row.scrollIntoView({behavior:'smooth', block:'nearest'}); }
+            selectGovernorate(item.city_id, false);
+            var row = document.querySelector('.hn-map-location[data-city-id="' + item.city_id + '"]'); if (row) row.scrollIntoView({behavior:'smooth', block:'nearest'});
         });
         markers[item.city_id] = {marker: marker, point: point};
     });
     document.querySelectorAll('.hn-map-location').forEach(function (row) {
         row.addEventListener('click', function () {
-            var target = markers[row.dataset.cityId]; if (!target) return;
-            map.flyTo(target.point, 9, {duration:.7}); target.marker.openPopup();
-            document.querySelectorAll('.hn-map-location').forEach(function (item) { item.classList.remove('is-active'); }); row.classList.add('is-active');
+            if (activeMapMode === 'choropleth' && governorateLayers[row.dataset.cityId]) {
+                var layer = governorateLayers[row.dataset.cityId];
+                choroplethMap.fitBounds(layer.getBounds(), {padding:[28,28], maxZoom:9}); layer.openPopup();
+            } else {
+                var target = markers[row.dataset.cityId]; if (!target) return;
+                map.flyTo(target.point, 9, {duration:.7}); target.marker.openPopup();
+            }
+            selectGovernorate(row.dataset.cityId, false);
         });
     });
     var selectedCityId = @json($filters['city']);
+    var activeMapMode = 'circles';
+    var choroplethMap = L.map(choroplethElement, {zoomControl:false, minZoom:6, maxZoom:11, scrollWheelZoom:false, attributionControl:false});
+    L.control.zoom({position:'topright', zoomInTitle:'تكبير', zoomOutTitle:'تصغير'}).addTo(choroplethMap);
+    var governorateLayers = {};
+    var dataByArabicName = {};
+    data.forEach(function (item) { dataByArabicName[String(item.location_name || '').trim()] = item; });
+    var englishToArabic = {
+        'Damascus':'دمشق', 'Aleppo':'حلب', 'Rural Damascus':'ريف دمشق', 'Homs':'حمص', 'Hama':'حماة',
+        'Lattakia':'اللاذقية', 'Idleb':'إدلب', 'Al-Hasakeh':'الحسكة', 'Deir-ez-Zor':'دير الزور',
+        'Tartous':'طرطوس', 'Ar-Raqqa':'الرقة', "Dar'a":'درعا', 'As-Sweida':'السويداء', 'Quneitra':'القنيطرة'
+    };
+    function governorateColor(count) {
+        var ratio = Number(count || 0) / max;
+        if (!count) return '#e8f0f3';
+        if (ratio >= .75) return '#075da8';
+        if (ratio >= .5) return '#1685d1';
+        if (ratio >= .25) return '#4aa5ea';
+        if (ratio >= .1) return '#82c3f2';
+        return '#b9ddf7';
+    }
+    var legendValues = document.getElementById('color-legend-values');
+    [0, .1, .25, .5, .75].forEach(function (ratio, index, values) {
+        var part = document.createElement('span'); part.className = 'hn-color-step';
+        var swatch = document.createElement('b'); swatch.style.background = governorateColor(Math.max(1, max * ratio));
+        var from = Math.round(max * ratio); var to = index < values.length - 1 ? Math.max(from, Math.round(max * values[index + 1]) - 1) : null;
+        var label = document.createElement('small'); label.textContent = to === null ? from + '+' : from + '–' + to;
+        part.appendChild(swatch); part.appendChild(label); legendValues.appendChild(part);
+    });
+    function popupContent(name, item) {
+        var wrapper = document.createElement('div'); wrapper.className = 'hn-map-popup';
+        var title = document.createElement('strong'); title.textContent = name;
+        var count = document.createElement('span');
+        count.textContent = !item ? 'لا توجد حالات ضمن الفلاتر' : (Number(item.patients_count) < 5 ? 'أقل من 5 مرضى' : Number(item.patients_count).toLocaleString('ar') + ' مريض');
+        wrapper.appendChild(title); wrapper.appendChild(count);
+        if (item) { var rate = document.createElement('small'); rate.textContent = Number(item.rate_per_1000).toLocaleString('ar') + ' حالة لكل 1000 مريض'; wrapper.appendChild(rate); }
+        return wrapper;
+    }
+    fetch(@json(asset('assets/data/syria-governorates.geojson')))
+        .then(function (response) { if (!response.ok) throw new Error('GeoJSON'); return response.json(); })
+        .then(function (geojson) {
+            L.geoJSON(geojson, {
+                style: function (feature) {
+                    var name = englishToArabic[feature.properties.shapeName] || feature.properties.shapeName;
+                    var item = dataByArabicName[name];
+                    return {color:'#fff', weight:1.5, fillColor:governorateColor(item && item.patients_count), fillOpacity:.92};
+                },
+                onEachFeature: function (feature, layer) {
+                    var name = englishToArabic[feature.properties.shapeName] || feature.properties.shapeName;
+                    var item = dataByArabicName[name];
+                    layer.bindTooltip(name, {permanent:true, direction:'center', className:'hn-map-label'}).bindPopup(popupContent(name, item));
+                    layer.on({
+                        mouseover:function () { layer.setStyle({weight:3, color:'#17333d'}); layer.bringToFront(); },
+                        mouseout:function () { highlightSelection(selectedDetailId); if (!selectedDetailId) layer.setStyle({weight:1.5, color:'#fff', fillOpacity:.92, opacity:1}); },
+                        click:function () {
+                            if (item) selectGovernorate(item.city_id, true);
+                        }
+                    });
+                    if (item) governorateLayers[item.city_id] = layer;
+                }
+            }).addTo(choroplethMap);
+            if (selectedCityId && mapDetails[String(selectedCityId)]) selectGovernorate(selectedCityId, activeMapMode === 'choropleth');
+            else if (activeMapMode === 'choropleth') displayCurrentExtent();
+        })
+        .catch(function () { choroplethElement.classList.add('is-offline'); });
     var showSyria = document.getElementById('map-show-syria');
     var showGovernorate = document.getElementById('map-show-governorate');
-    showGovernorate.disabled = !selectedCityId || !markers[selectedCityId];
+    var modeCircles = document.getElementById('map-mode-circles');
+    var modeChoropleth = document.getElementById('map-mode-choropleth');
+    var circleLegend = document.getElementById('circle-map-legend');
+    var choroplethLegend = document.getElementById('choropleth-map-legend');
+    var choroplethSource = document.getElementById('choropleth-map-source');
+    showGovernorate.disabled = !selectedCityId;
     function setToolbar(active) {
         showSyria.classList.toggle('is-active', active === 'syria');
         showGovernorate.classList.toggle('is-active', active === 'governorate');
     }
-    function displaySyria() { map.fitBounds(syriaBounds, {padding:[16,16]}); setToolbar('syria'); }
+    function displaySyria() {
+        (activeMapMode === 'choropleth' ? choroplethMap : map).fitBounds(syriaBounds, {padding:[16,16]});
+        setToolbar('syria');
+    }
     function displayGovernorate() {
-        var target = markers[selectedCityId]; if (!target) return;
-        map.flyTo(target.point, 10, {duration:.7}); target.marker.openPopup(); setToolbar('governorate');
+        if (activeMapMode === 'choropleth') {
+            var layer = governorateLayers[selectedCityId]; if (!layer) return;
+            choroplethMap.fitBounds(layer.getBounds(), {padding:[28,28], maxZoom:9}); layer.openPopup();
+        } else {
+            var target = markers[selectedCityId]; if (!target) return;
+            map.flyTo(target.point, 10, {duration:.7}); target.marker.openPopup();
+        }
+        setToolbar('governorate');
+    }
+    function displayCurrentExtent() { selectedCityId ? displayGovernorate() : displaySyria(); }
+    function setMapMode(mode) {
+        activeMapMode = mode;
+        var colorMode = mode === 'choropleth';
+        mapElement.classList.toggle('d-none', colorMode); choroplethElement.classList.toggle('d-none', !colorMode);
+        circleLegend.classList.toggle('d-none', colorMode); choroplethLegend.classList.toggle('d-none', !colorMode); choroplethSource.classList.toggle('d-none', !colorMode);
+        modeCircles.classList.toggle('is-active', !colorMode); modeChoropleth.classList.toggle('is-active', colorMode);
+        setTimeout(function () { (colorMode ? choroplethMap : map).invalidateSize(); displayCurrentExtent(); }, 50);
     }
     showSyria.addEventListener('click', displaySyria);
     showGovernorate.addEventListener('click', displayGovernorate);
-    setTimeout(function () { map.invalidateSize(); selectedCityId && markers[selectedCityId] ? displayGovernorate() : displaySyria(); }, 100);
+    modeCircles.addEventListener('click', function () { setMapMode('circles'); });
+    modeChoropleth.addEventListener('click', function () { setMapMode('choropleth'); });
+    document.getElementById('detail-close').addEventListener('click', clearGovernorateSelection);
+    document.getElementById('detail-reset').addEventListener('click', clearGovernorateSelection);
+    document.getElementById('detail-apply').addEventListener('click', function () {
+        if (!selectedDetailId) return; citySelect.value = selectedDetailId; filterAreas(); document.getElementById('disease-analysis-form').submit();
+    });
+    setTimeout(function () { map.invalidateSize(); if (selectedCityId && mapDetails[String(selectedCityId)]) selectGovernorate(selectedCityId, true); else displaySyria(); }, 100);
 })();
 </script>
 @endsection

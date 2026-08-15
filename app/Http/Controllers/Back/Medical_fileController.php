@@ -23,7 +23,41 @@ class Medical_fileController extends Controller
      */
     public function index()
     {
-        //
+        $user = auth()->user();
+        abort_unless($user->hasSystemRole('super_admin', 'secretary', 'doctor'), 403);
+
+        $query = DB::table('cln_x_visits as visits')
+            ->join('gnr_m_patients as patients', 'patients.id', '=', 'visits.patient')
+            ->leftJoin('gnr_m_clinics as clinics', 'clinics.id', '=', 'visits.clinic')
+            ->select([
+                'visits.id', 'visits.patient', 'visits.clinic', 'visits.d_start', 'visits.status',
+                'patients.f_name', 'patients.l_name', 'clinics.name_ar as clinic_name',
+            ]);
+
+        if ($user->hasSystemRole('doctor')) {
+            $doctorId = (int) $user->doctor?->id;
+            abort_if($doctorId <= 0, 403, 'لا يوجد ملف طبيب مرتبط بهذا الحساب.');
+            $doctorIdentifiers = array_values(array_unique(array_filter([$doctorId, (int) $user->id])));
+            $query->whereExists(function ($appointments) use ($doctorIdentifiers) {
+                $appointments->selectRaw('1')
+                    ->from('appointments')
+                    ->whereColumn('appointments.appointment_for', 'patients.user_id')
+                    ->whereIn('appointments.appointment_with', $doctorIdentifiers)
+                    ->whereNull('appointments.deleted_at');
+            });
+        }
+
+        if ($search = trim((string) request('search'))) {
+            $query->where(function ($builder) use ($search) {
+                $builder->where('patients.f_name', 'like', "%{$search}%")
+                    ->orWhere('patients.l_name', 'like', "%{$search}%")
+                    ->orWhere('visits.id', $search);
+            });
+        }
+
+        $visits = $query->distinct()->orderByDesc('visits.d_start')->paginate(20)->withQueryString();
+
+        return view('back.medical-files.index', compact('visits'));
     }
 
     /**

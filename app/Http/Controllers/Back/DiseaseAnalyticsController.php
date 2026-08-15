@@ -63,6 +63,8 @@ class DiseaseAnalyticsController extends Controller
             ->selectRaw('COUNT(DISTINCT diagnosis.patient) patients_count')
             ->groupBy('age_group')->orderByDesc('patients_count')->get();
 
+        $mapDetails = $this->mapDetails($query, $cityDistribution, $uniquePatients, $selectedDiseaseId, $filters);
+
         $trend = (clone $query)->whereRaw($this->eventTime().' > 0')
             ->selectRaw("DATE_FORMAT(FROM_UNIXTIME({$this->eventTime()}), '%Y-%m') period")
             ->selectRaw('COUNT(DISTINCT diagnosis.patient) patients_count')
@@ -73,7 +75,7 @@ class DiseaseAnalyticsController extends Controller
 
         return view('back.analytics.diseases', array_merge($lookups, compact(
             'filters', 'selectedDisease', 'summary', 'cityDistribution', 'areaDistribution',
-            'genderDistribution', 'ageDistribution', 'trend', 'comparison', 'quality'
+            'genderDistribution', 'ageDistribution', 'mapDetails', 'trend', 'comparison', 'quality'
         )));
     }
 
@@ -159,7 +161,66 @@ class DiseaseAnalyticsController extends Controller
         return ['missing_location'=>DB::table('gnr_m_patients')->where(fn($q)=>$q->whereNull('p_city')->orWhere('p_city','<=',0)->orWhereNull('p_area')->orWhere('p_area','<=',0))->count(), 'patients'=>$patients, 'missing_dates'=>DB::table('cln_x_prev_icd10 as d')->leftJoin('cln_x_visits as v','v.id','=','d.visit')->whereRaw('COALESCE(NULLIF(d.date, 0), v.d_start) <= 0')->count(), 'free_text'=>$free, 'coding_rate'=>($coded+$free) ? round($coded*100/($coded+$free),1) : 0];
     }
 
+    private function mapDetails(Builder $query, $cities, int $totalPatients, int $diseaseId, array $filters): array
+    {
+        $details = [];
+        foreach ($cities->values() as $index => $city) {
+            $details[(string) $city->city_id] = [
+                'id' => (string) $city->city_id,
+                'name' => trim((string) $city->location_name),
+                'patients' => (int) $city->patients_count,
+                'population' => (int) $city->population,
+                'rate' => (float) $city->rate_per_1000,
+                'share' => $totalPatients ? round($city->patients_count * 100 / $totalPatients, 1) : 0,
+                'rank' => $index + 1,
+                'areas' => [], 'genders' => [], 'ages' => [], 'previous' => null, 'change' => null,
+            ];
+        }
+
+        $areas = (clone $query)
+            ->leftJoin('gnr_m_areas as map_area', 'map_area.id', '=', 'patient.p_area')
+            ->where('patient.p_city', '>', 0)
+            ->select('patient.p_city as city_id')
+            ->selectRaw("COALESCE(NULLIF(TRIM(map_area.name), ''), 'غير محددة') label")
+            ->selectRaw('COUNT(DISTINCT diagnosis.patient) patients_count')
+            ->groupBy('patient.p_city', 'patient.p_area', 'map_area.name')
+            ->orderByDesc('patients_count')->get()->groupBy('city_id');
+
+        $genders = (clone $query)->where('patient.p_city', '>', 0)
+            ->select('patient.p_city as city_id')
+            ->selectRaw("CASE WHEN patient.sex = 1 THEN 'ذكر' WHEN patient.sex = 2 THEN 'أنثى' ELSE 'غير محدد' END label")
+            ->selectRaw('COUNT(DISTINCT diagnosis.patient) patients_count')
+            ->groupBy('patient.p_city', 'patient.sex')->get()->groupBy('city_id');
+
+        $ages = (clone $query)->where('patient.p_city', '>', 0)
+            ->select('patient.p_city as city_id')
+            ->selectRaw("CASE WHEN TIMESTAMPDIFF(YEAR, patient.birth_date, CURDATE()) < 13 THEN 'أطفال' WHEN TIMESTAMPDIFF(YEAR, patient.birth_date, CURDATE()) < 25 THEN 'شباب' WHEN TIMESTAMPDIFF(YEAR, patient.birth_date, CURDATE()) < 45 THEN 'بالغون' WHEN TIMESTAMPDIFF(YEAR, patient.birth_date, CURDATE()) < 65 THEN 'متوسطو العمر' ELSE 'كبار السن' END label")
+            ->selectRaw('COUNT(DISTINCT diagnosis.patient) patients_count')
+            ->groupBy('patient.p_city', 'label')->get()->groupBy('city_id');
+
+        $previousByCity = collect();
+        if ($filters['date_from'] && $filters['date_to']) {
+            $from = Carbon::parse($filters['date_from']); $to = Carbon::parse($filters['date_to']);
+            $days = $from->diffInDays($to) + 1; $previousTo = $from->copy()->subDay(); $previousFrom = $previousTo->copy()->subDays($days - 1);
+            $previousByCity = $this->diagnosesQuery($diseaseId, $filters, ['from'=>$previousFrom->toDateString(), 'to'=>$previousTo->toDateString()])
+                ->where('patient.p_city', '>', 0)->select('patient.p_city as city_id')
+                ->selectRaw('COUNT(DISTINCT diagnosis.patient) patients_count')->groupBy('patient.p_city')->pluck('patients_count', 'city_id');
+        }
+
+        foreach ($details as $id => &$detail) {
+            $detail['areas'] = collect($areas->get($id, collect()))->take(5)->map(fn ($row) => ['label'=>$row->label, 'count'=>(int)$row->patients_count])->values()->all();
+            $detail['genders'] = collect($genders->get($id, collect()))->map(fn ($row) => ['label'=>$row->label, 'count'=>(int)$row->patients_count])->values()->all();
+            $detail['ages'] = collect($ages->get($id, collect()))->map(fn ($row) => ['label'=>$row->label, 'count'=>(int)$row->patients_count])->values()->all();
+            if ($filters['date_from'] && $filters['date_to']) {
+                $detail['previous'] = (int) $previousByCity->get($id, 0);
+                $detail['change'] = $detail['previous'] ? round(($detail['patients'] - $detail['previous']) * 100 / $detail['previous'], 1) : ($detail['patients'] ? 100 : 0);
+            }
+        }
+
+        return $details;
+    }
+
     private function eventTime(): string { return 'COALESCE(NULLIF(diagnosis.date, 0), visit.d_start)'; }
     private function syrianGovernorates(): array { return ['دمشق','ريف دمشق','القنيطرة','درعا','السويداء','حمص','حماة','طرطوس','اللاذقية','إدلب','حلب','الرقة','دير الزور','الحسكة']; }
-    private function emptyResults(): array { return ['summary'=>['patients'=>0,'records'=>0,'cities'=>0,'prevalence'=>0,'population'=>0],'cityDistribution'=>collect(),'areaDistribution'=>collect(),'genderDistribution'=>collect(),'ageDistribution'=>collect(),'trend'=>collect(),'comparison'=>['available'=>false,'previous'=>0,'change'=>null],'quality'=>['missing_location'=>0,'patients'=>0,'missing_dates'=>0,'free_text'=>0,'coding_rate'=>0]]; }
+    private function emptyResults(): array { return ['summary'=>['patients'=>0,'records'=>0,'cities'=>0,'prevalence'=>0,'population'=>0],'cityDistribution'=>collect(),'areaDistribution'=>collect(),'genderDistribution'=>collect(),'ageDistribution'=>collect(),'mapDetails'=>[],'trend'=>collect(),'comparison'=>['available'=>false,'previous'=>0,'change'=>null],'quality'=>['missing_location'=>0,'patients'=>0,'missing_dates'=>0,'free_text'=>0,'coding_rate'=>0]]; }
 }

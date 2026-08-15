@@ -1,128 +1,36 @@
 @extends('layouts.master')
-@section('css')
-    <!--Internal   Notify -->
-    <link href="{{ URL::asset('assets/plugins/notify/css/notifIt.css') }}" rel="stylesheet" />
-    <link href="{{URL::asset('assets/plugins/accordion/accordion.css')}}" rel="stylesheet" />
-    <link href="{{ URL::asset('assets/css/css.css') }}" rel="stylesheet" />
-@section('title')
-    الاطباء
-@stop
-
-
-@endsection
-@section('page-header')
-    <!-- breadcrumb -->
-    <div class="breadcrumb-header justify-content-between">
-        <div class="my-auto">
-            <div class="d-flex">
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb breadcrumb-style2">
-                        <li class="breadcrumb-item">
-                            <a href="{{ url('/' . $page='dashboard') }}">الصفحة الرئيسية</a>
-                        </li>
-                        <li class="breadcrumb-item active">جميع الأسئلة</li>
-                    </ol></nav>
-            </div>
-        </div>
-    </div>
-    <!-- breadcrumb -->
-@endsection
+@section('title', 'أسئلة العيادة')
 @section('content')
+@php
+    $pendingOnly = request()->routeIs('questions.answer');
+    $sectionName = $questions->first()?->gnr_m_clinics?->name_ar;
+@endphp
+<x-ui.page-header
+    :title="$pendingOnly ? 'الأسئلة التي تنتظر إجابتي' : 'أسئلة العيادة'"
+    :description="$sectionName ? 'استفسارات المرضى في قسم '.$sectionName : 'متابعة استفسارات المرضى والإجابة عنها.'"
+/>
+<x-ui.flash />
 
-    @if (session('success'))
-        <div class="alert alert-success" role="alert">
-            <button aria-label="Close" class="close" data-dismiss="alert" type="button">
-                <span aria-hidden="true">&times;</span></button>
-            <strong>Well done!</strong> {{ session('success') }}.
-        </div>
-    @endif
-    @if (session('error'))
-        <div class="alert alert-danger mg-b-0" role="alert">
-            <button aria-label="Close" class="close" data-dismiss="alert" type="button">
-                <span aria-hidden="true">&times;</span></button>
-            <strong>Oh snap!</strong> {{ session('error') }}.
-        </div>
-    @endif
-
-    <!-- row -->
-    <div class="row">
-        <div class="col-lg-12 col-md-12">
-            <div class="card">
-                <div class="card-body">
-                    <div>
-                        <h6 class="card-title mb-1">@if($questions->isNotEmpty()){{$questions[0]->gnr_m_clinics->name_ar}}@endif جميع الاسئلة الخاصة بقسم.</h6>
-                        <p class="text-muted card-sub-title"></p>
-                    </div>
-                    <div aria-multiselectable="true" class="accordion accordion-blue" id="accordion2" role="tablist">
-                        @if($questions->isNotEmpty())
-                            @foreach($questions as $key => $q)
-                                <div class="card mb-0">
-                                    <a href="{{ route('questions.edit', $q->id) }}" style="    position: absolute;
-    width: 43px;
-    left: 18px;
-    z-index: 2;
-    top: 12px;
-    background-color: #0162e8;"
-                                       class="btn btn-sm btn-primary"><i class="las la-pen mg-l-5 mg-r-5"></i></a>
-                                    <div class="card-header" id="heading{{$key}}2" role="tab">
-                                        <a aria-controls="collapse{{$key}}2" aria-expanded="true"
-                                           class="collapsed" data-toggle="collapse" href="#collapse{{$key}}2">
-                                            {{$q->Question}}
-                                        </a>
-                                    </div>
-                                    <div aria-labelledby="heading{{$key}}2" class="collapse" data-parent="#accordion2"
-                                         id="collapse{{$key}}2" role="tabpanel">
-                                        <div class="card-body">
-                                            @if($q->answer !== null)
-                                                {{$q->answer}}
-                                            @else
-                                                لم يتم الاجابة عن السؤال بعد
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-                            @endforeach
-                        @else
-                            <p class="text-muted card-sub-title">لا يوجد اسئلة في هذا القسم</p>
-                        @endif
-
-                    </div><!-- accordion -->
-                </div>
+<section class="hn-panel">
+    <div class="hn-panel-header"><div><h2 class="hn-panel-title">{{ $pendingOnly ? 'بانتظار الإجابة' : 'الأسئلة والإجابات' }}</h2><p class="hn-panel-subtitle">{{ number_format($questions->count()) }} سؤالًا</p></div></div>
+    <div class="hn-panel-body">
+        @if($questions->isEmpty())
+            <x-ui.empty :title="$pendingOnly ? 'لا توجد أسئلة تنتظر إجابتك' : 'لا توجد أسئلة في هذه العيادة'" description="ستظهر الاستفسارات هنا فور إرسالها من المرضى." icon="fe-message-circle" />
+        @else
+            <div class="hn-faq" id="questions-accordion">
+                @foreach($questions as $question)
+                    <article class="hn-faq-item">
+                        <button class="hn-faq-question collapsed" type="button" data-toggle="collapse" data-target="#question-{{ $question->id }}" aria-expanded="false">
+                            <span><small>{{ $question->user?->name ?: 'مستخدم' }} · سؤال #{{ $question->id }}</small><strong>{{ $question->Question }}</strong></span><i class="fe fe-chevron-down"></i>
+                        </button>
+                        <div id="question-{{ $question->id }}" class="collapse" data-parent="#questions-accordion"><div class="hn-faq-answer">
+                            @if($question->answer)<p>{{ $question->answer }}</p>@else<span class="hn-badge hn-badge-pending">بانتظار الإجابة</span>@endif
+                            @can('update', $question)<div class="hn-row-actions mt-3"><a href="{{ route('questions.edit', $question->id) }}" class="hn-btn hn-btn-primary"><i class="fe fe-edit-2"></i> {{ $question->answer ? 'تعديل الإجابة' : 'إجابة السؤال' }}</a></div>@endcan
+                        </div></div>
+                    </article>
+                @endforeach
             </div>
-        </div>
+        @endif
     </div>
-    </div>
-    <!-- Container closed -->
-    </div>
-    <!-- main-content closed -->
-@endsection
-@section('js')
-    <!--Internal  Notify js -->
-    <script>
-        $('#deleteAds').on('submit','form',function(e) {
-            e.preventDefault();
-            $(this).closest(".closeAd").remove();
-            $.ajax({
-                method:"POST",
-                headers: {
-                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                },
-                url: "{{route('ads.destroy','test')}}",
-                data: $(this).serialize()
-                ,
-                success: function(data) {
-                    alert(data.result);
-                },
-                error: function(xhr, status, error) {
-                    console.error(xhr);}});
-        });
-    </script>
-    <script src="{{URL::asset('assets/plugins/jquery-ui/ui/widgets/datepicker.js')}}"></script>
-    <!-- Internal Select2 js-->
-    <script src="{{URL::asset('assets/plugins/select2/js/select2.min.js')}}"></script>
-    <!--- Internal Accordion Js -->
-    <script src="{{URL::asset('assets/plugins/accordion/accordion.min.js')}}"></script>
-    <script src="{{URL::asset('assets/js/accordion.js')}}"></script>
-    <script src="{{ URL::asset('assets/plugins/notify/js/notifIt.js') }}"></script>
-    <script src="{{ URL::asset('assets/plugins/notify/js/notifit-custom.js') }}"></script>
+</section>
 @endsection
