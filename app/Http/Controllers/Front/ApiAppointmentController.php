@@ -80,72 +80,7 @@ public function get_booked_times(Request $request): JsonResponse
     ], 200);
 }
 
-// public function appointment_store(Request $request): JsonResponse
-// {
-//     $user = auth()->user();
-//     $role = $user->roles_name;
-//     $userId = $user->id;
 
-//     if ($role == 'Patient') {
-//         $validator = Validator::make($request->all(), [
-//             'appointment_with' => 'required',
-//             'appointment_date' => 'required',
-//             'available_slot' => 'required',
-//         ]);
-//     } elseif ($role == 'Doctor') {
-//         $validator = Validator::make($request->all(), [
-//             'appointment_for' => 'required',
-//             'appointment_date' => 'required',
-//             'available_slot' => 'required',
-//         ]);
-//     }
-
-//     if ($validator->fails()) {
-//         return $this->returnError("V00", $validator->errors());
-//     }
-
-//     // 🔴 === بداية الكود الجديد للمطابقة الذكية للوقت === 🔴
-//     $doctorId = ($role == 'Patient') ? $request->appointment_with : $userId;
-
-//     // 1. جلب جميع مواعيد الطبيب في هذا اليوم فقط (عددها سيكون قليل جداً)
-//     $existingAppointments = \App\Models\back\Appointment::where('appointment_with', $doctorId)
-//         ->where('appointment_date', $request->appointment_date)
-//         ->get();
-
-//     // 2. المطابقة باستخدام Carbon لتخطي اختلافات SQL
-//     $isBooked = $existingAppointments->contains(function ($app) use ($request) {
-//         if (!$app->time) return false;
-        
-//         // توحيد الصيغة بشكل قاطع (H:i)
-//         $storedTime = \Carbon\Carbon::parse($app->time)->format('H:i');
-//         $requestedTime = \Carbon\Carbon::parse($request->available_slot)->format('H:i');
-        
-//         // تحقق من التطابق، وأن الموعد غير محذوف وغير ملغى
-//         // نستخدم is_null لتفادي المشاكل إذا كان العمود يقبل القيمة Null
-//         $isNotDeleted = ($app->is_deleted == 0 || is_null($app->is_deleted));
-//         $isNotCancelled = ($app->status != 2);
-
-//         return ($storedTime == $requestedTime) && $isNotDeleted && $isNotCancelled;
-//     });
-
-//     if ($isBooked) {
-//         return $this->returnError("V01", "عذراً، هذا الموعد تم حجزه مسبقاً، يرجى اختيار وقت آخر.");
-//     }
-//     // 🔴 === نهاية الكود الجديد === 🔴
-
-//     $input = $request->all();
-//     try {
-//         $appointment = $this->AppointmentRepository->store($input);
-//         if (!$appointment) {
-//             return $this->returnError("D01", "Something went wrong..!");
-//         } else {
-//             return $this->returnSuccess("D00", "Appointment successfully");
-//         }
-//     } catch (\Exception $e) {
-//         return $this->returnError("D01", $e->getMessage());
-//     }
-// }
-// 1. أضفنا الـ Repository هنا في القوسين
 public function appointment_store(Request $request, \App\Repositories\Appointments\AppointmentRepository $appointmentRepo): JsonResponse
 {
     $user = auth()->user();
@@ -170,9 +105,16 @@ public function appointment_store(Request $request, \App\Repositories\Appointmen
         return $this->returnError("V00", $validator->errors());
     }
 
-    // 🔴 === بداية الكود الجديد للمطابقة الذكية للوقت === 🔴
-    $doctorId = ($role === 'patient') ? $request->appointment_with : $userId;
+    // 🔴 الحل السحري: نأخذ الرقم من الفلاتر كما هو للمريض، ولا نبحث عنه لتجنب التداخل الكارثي!
+    if ($role === 'doctor') {
+        $doctorRecord = \App\Models\back\doctors::where('user_id', $userId)->first();
+        $doctorId = $doctorRecord ? $doctorRecord->id : $userId;
+        $request->merge(['appointment_with' => $doctorId]);
+    }
+    
+    $doctorId = $request->appointment_with;
 
+    // 🔴 === المطابقة الذكية للوقت والتاريخ === 🔴
     $existingAppointments = \App\Models\back\Appointment::where('appointment_with', $doctorId)
         ->where('appointment_date', $request->appointment_date)
         ->get();
@@ -192,11 +134,9 @@ public function appointment_store(Request $request, \App\Repositories\Appointmen
     if ($isBooked) {
         return $this->returnError("V01", "عذراً، هذا الموعد تم حجزه مسبقاً، يرجى اختيار وقت آخر.");
     }
-    // 🔴 === نهاية الكود الجديد === 🔴
 
     $input = $request->all();
     try {
-        // 2. التعديل الأهم: استخدمنا المتغير الجديد للحفظ بدلاً من $this
         $appointment = $appointmentRepo->store($input);
         
         if (!$appointment) {
@@ -209,51 +149,7 @@ public function appointment_store(Request $request, \App\Repositories\Appointmen
         return $this->returnError("D01", "Unable to create appointment.");
     }
 }
-    // public function appointment_store(Request $request): JsonResponse
-    // {
-    //     $user = auth()->user();
-    //     $role = $user->roles_name;
-    //     $userId = $user->id;
-    //     if ($role == 'Patient') {
-    //         $validator = Validator::make($request->all(), [
-    //             'appointment_with' => 'required',
-    //             'appointment_date' => 'required',
-    //             'available_slot' => 'required',
-    //         ]);
-    //     } elseif ($role == 'Doctor') {
-    //         $validator = Validator::make($request->all(), [
-    //             'appointment_for' => 'required',
-    //             'appointment_date' => 'required',
-    //             'available_slot' => 'required',
-    //         ]);
-    //     }
-    //     if ($validator->fails()) {
-    //         return $this->returnError("V00", $validator->errors());
-    //     }
-    //     $isBooked = \App\Models\back\Appointment::where('appointment_with', $request->appointment_with)
-    //     ->where('appointment_date', $request->appointment_date)
-    //     ->where('time', $request->available_slot) // تأكد إذا كنت تستقبل الوقت باسم available_slot أو time
-    //     ->where('is_deleted', 0)
-    //     ->where('status', '!=', 2) // تجاهل المواعيد الملغاة (حسب أرقام الـ status عندك)
-    //     ->exists();
-
-    // if ($isBooked) {
-    //     // إذا كان الموعد موجود، نرجع رسالة خطأ واضحة للتطبيق
-    //     return $this->returnError("V01", "عذراً، هذا الموعد تم حجزه مسبقاً، يرجى اختيار وقت آخر.");
-    // }
-    //     $input = $request->all();
-    //     try {
-    //         $appointment = $this->AppointmentRepository->store($input);
-    //         if (!$appointment) {
-    //             return $this->returnError("D01", "Something went wrong..!");
-    //         } else {
-    //             return $this->returnSuccess("D00", "Appointment successfully");
-    //         }
-    //     } catch (Exception $e) {
-    //         return $this->returnError("D01", $e->getMessage());
-    //     }
-    // }
-
+    
     public function appointment_update(Request $request): JsonResponse
     {
         $user = auth()->user();
@@ -299,65 +195,31 @@ public function appointment_store(Request $request, \App\Repositories\Appointmen
         }
     }
 
-    // public function pat_appoints(): JsonResponse
-    // {
-    //     $appointments = $this->AppointmentRepository->pat_appoints();
-    //     if (!$appointments) {
-    //         return $this->returnError("D01", "There are no appointments..");
-    //     } else {
-    //         return $this->returnData("upcoming_Appointment", $appointments, "", "D00");
-    //     }
-    // }
-// public function pat_appoints(): JsonResponse
-// {
-//     $appointments = $this->AppointmentRepository->pat_appoints(); // هذه تجلب البيانات مع الـ doctor
-
-//     if ($appointments->isEmpty()) {
-//         return response()->json(['status' => 'success', 'data' => []], 200);
-//     }
-
-//     // هنا نقوم بعمل map للبيانات لتكون واضحة للتطبيق
-//     $data = $appointments->map(function ($appointment) {
-//         return [
-//             'id' => $appointment->id,
-//             'appointment_date' => $appointment->appointment_date,
-//             // جلب اسم الطبيب من العلاقة التي جلبتها في الـ Repository
-// //   'doctor_name' => $appointment->doctor ? $appointment->doctor->name : 'طبيب غير محدد',            // جلب الوقت من العلاقة timeSlot إذا كان متاحاً
-// 'doctor_name' => $appointment->doctor ? $appointment->doctor->name_ar : 'طبيب غير محدد',
-// 'time' => $appointment->time ? \Carbon\Carbon::parse($appointment->time)->format('H:i') : '--:--',        ];
-//     });
-
-//     return response()->json([
-//         'status' => 'success',
-//         'upcoming_Appointment' => $data
-//     ], 200);
-// }
-//     public function doc_appoints(): JsonResponse
-//     {
-//         $appointments = $this->AppointmentRepository->doc_appoints();
-//         if ($appointments->count()==0) {
-//             return $this->returnError("D01", "There are no appointments..");
-//         } else {
-//             return $this->returnData("Appointments", $appointments, "", "D00");
-//         }
-//     }
+ 
 public function pat_appoints(): JsonResponse
 {
     abort_unless(auth()->user()->hasSystemRole('patient'), 403);
-    $appointments = $this->AppointmentRepository->pat_appoints(); // تجلب البيانات مع الـ doctor
+    $appointments = $this->AppointmentRepository->pat_appoints(); 
 
     if ($appointments->isEmpty()) {
         return response()->json(['status' => 'success', 'data' => []], 200);
     }
 
-    // هنا نقوم بعمل map للبيانات لتكون واضحة للتطبيق
     $data = $appointments->map(function ($appointment) {
+        // 🔴 البحث المباشر والصارم حصراً باستخدام الـ id الأساسي لجدول الأطباء
+        $doctorRecord = \App\Models\back\doctors::where('id', $appointment->appointment_with)->first();
+        
+        // كاحتياطي أخير: إذا لمჩيجدها بالـ id، يبحث بالـ user_id
+        if (!$doctorRecord) {
+            $doctorRecord = \App\Models\back\doctors::where('user_id', $appointment->appointment_with)->first();
+        }
+
+$correctDoctorName = $appointment->doctor_name_override ?? ($appointment->doctor ? $appointment->doctor->name_ar : 'طبيب غير محدد');
         return [
             'id' => $appointment->id,
             'appointment_date' => $appointment->appointment_date,
-            'doctor_name' => $appointment->doctor ? $appointment->doctor->name_ar : 'طبيب غير محدد',
+            'doctor_name' => $correctDoctorName, // الاسم الصحيح 100%
             'time' => $appointment->time ? \Carbon\Carbon::parse($appointment->time)->format('H:i') : '--:--',
-            // 🔴 التعديل هنا: إضافة سطر إرسال الحالة إلى فلاتر
             'status' => $appointment->status, 
         ];
     });
@@ -438,27 +300,7 @@ public function pat_appoints(): JsonResponse
         return $this->returnSuccess("D00", "appointment deleted successfully..");
     }
 
-// 29 الشهر
-// public function accept_appointment(Request $request, \App\Repositories\Appointments\AppointmentRepository $appointmentRepo)
-//     {
-//         $appointmentId = $request->input('appointment_id');
-        
-//         // استخدمنا المتغير الجديد $appointmentRepo بدلاً من $this
-//         $updatedAppointment = $appointmentRepo->accept_appoint($appointmentId);
 
-//         if (!$updatedAppointment) {
-//             return response()->json([
-//                 'success' => false,
-//                 'msg' => 'الموعد غير موجود'
-//             ], 404);
-//         }
-
-//         return response()->json([
-//             'success' => true,
-//             'msg' => 'تم قبول الموعد بنجاح',
-//             'data' => $updatedAppointment
-//         ], 200);
-//     }
 public function reject_appointment(Request $request, \App\Repositories\Appointments\AppointmentRepository $appointmentRepo)
     {
         $validated = $request->validate(['appointment_id' => ['required', 'integer', 'exists:appointments,id']]);

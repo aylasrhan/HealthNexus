@@ -128,7 +128,8 @@ class ApiAuthController extends Controller
     $input = $validator->validated();
     $input['roles_name'] = ['patient'];
     $input['password'] = bcrypt($input['password']);
-    $verificationCode = (string) random_int(100000, 999999);
+    $verificationCode = (string) random_int(1000, 9999);
+    // $verificationCode = (string) random_int(100000, 999999);
     $input['verification_code'] = Hash::make($verificationCode);
     $input['Status'] = 'مفعل';
 
@@ -182,9 +183,9 @@ class ApiAuthController extends Controller
 
         return $this->returnData("user_token", $token, 'Registered successfully, check your email.', "D00");
     } catch (\Throwable $ex) {
-        report($ex);
-        return $this->returnError("D01", 'Unable to complete registration.');
-    }
+    report($ex);
+    return $this->returnError("D01", $ex->getMessage()); // اطبع رسالة الخطأ الحقيقية
+}
 }
 
     // public function login(Request $request): JsonResponse
@@ -236,8 +237,7 @@ class ApiAuthController extends Controller
    public function verify(Request $request): JsonResponse
  {
     $user = $request->user();
-    $validated = $request->validate(['code' => ['required', 'digits:6']]);
-    $cacheKey = "email_verification_expires:{$user->id}";
+  $validated = $request->validate(['code' => ['required', 'digits:4']]);    $cacheKey = "email_verification_expires:{$user->id}";
 
     if (!Cache::has($cacheKey)) {
         return $this->returnError("E05", "Verification code expired. Request a new code.");

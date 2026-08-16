@@ -31,14 +31,12 @@ class ApiDoctorController extends Controller
         $this->ReviewRepository = $ReviewRepository;
 
     }
-
 public function dep_doctor(Request $request)
 {
     \Log::info("تم استدعاء دالة dep_doctor الجديدة!");
     $subgrp = $request->subgrp;
     $doctors = doctors::where('subgrp', (string)$subgrp)->get();
 
-    // إضافة سطر للتأكد من البيانات
     \Log::info("البيانات المسترجعة من قاعدة البيانات: " . $doctors->toJson());
 
     if ($doctors->isEmpty()) {
@@ -47,17 +45,35 @@ public function dep_doctor(Request $request)
 
     return response()->json([
         'success' => true,
-        'doctors' => $doctors->map(function ($doctor) {
-            return [
-               'id' => $doctor->id,
-            'name_ar' => $doctor->name_ar,
-            'from_time' => $doctor->from_time, // تأكدي أن هذه الأسماء مطابقة لقاعدة البيانات
-            'to_time' => $doctor->to_time,
-            'slot_time' => $doctor->slot_time,
-            ];
-        })
+        'doctors' => $doctors // إرجاع الأطباء كاملين مع كل حقولهم ليطابق نموذج Doctor في الفلاتر
     ], 200);
 }
+// public function dep_doctor(Request $request)
+// {
+//     \Log::info("تم استدعاء دالة dep_doctor الجديدة!");
+//     $subgrp = $request->subgrp;
+//     $doctors = doctors::where('subgrp', (string)$subgrp)->get();
+
+//     // إضافة سطر للتأكد من البيانات
+//     \Log::info("البيانات المسترجعة من قاعدة البيانات: " . $doctors->toJson());
+
+//     if ($doctors->isEmpty()) {
+//         return response()->json(['success' => false, 'message' => 'لا يوجد أطباء'], 404);
+//     }
+
+//     return response()->json([
+//         'success' => true,
+//         'doctors' => $doctors->map(function ($doctor) {
+//             return [
+//                'id' => $doctor->id,
+//             'name_ar' => $doctor->name_ar,
+//             'from_time' => $doctor->from_time, // تأكدي أن هذه الأسماء مطابقة لقاعدة البيانات
+//             'to_time' => $doctor->to_time,
+//             'slot_time' => $doctor->slot_time,
+//             ];
+//         })
+//     ], 200);
+// }
 
     public function review(Request $request): JsonResponse
     {

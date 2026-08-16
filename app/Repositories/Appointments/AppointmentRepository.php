@@ -72,25 +72,8 @@ class AppointmentRepository implements IAppointmentRepository
             ->orderBy('id', 'DESC')->get();
     }
 
-    // public function pat_appoints()
-    // {
-    //     $user = auth()->user();
-    //     if (!$user) {
-    //     return response()->json(['error' => 'Unauthenticated'], 401);
-    // }
-    //     $user_id = $user->id;
-    //     \Log::info("جاري جلب مواعيد المستخدم ID: " . $user_id);
-    //     $today = Carbon::today()->format('Y-m-d');
-    //     return Appointment::with('doctor', 'timeSlot')
-    //         ->where('appointment_for', $user_id)
-    //         // ->whereDate('appointment_date', '>=', $today)
-            
-    //         ->where('is_deleted', 0)
-    //         ->orderBy('id', 'DESC')->get();
-            
-    //         // \Log::info("عدد المواعيد التي تم العثور عليها: " . $results->count());
-    // }
-    public function pat_appoints()
+   
+   public function pat_appoints()
     {
         $user = auth()->user();
         if (!$user) {
@@ -100,90 +83,28 @@ class AppointmentRepository implements IAppointmentRepository
         
         $today = Carbon::today()->format('Y-m-d');
         
-        return Appointment::with('doctor', 'timeSlot')
+        // جلب المواعيد الخاصة بالمريض حصراً
+        $appointments = Appointment::with('timeSlot')
             ->where('appointment_for', $user_id)
             ->whereDate('appointment_date', '>=', $today)
             ->where('is_deleted', 0)
-            // 🔴 التعديل هنا: جلب المواعيد المعلقة (0) والمؤكدة (1) فقط!
             ->whereIn('status', [0, 1]) 
             ->orderBy('id', 'DESC')
             ->get();
+
+        // 🔴 الحقن المباشر والدقيق لاسم الطبيب الحقيقي من جدول doctors بناءً على appointment_with
+        foreach ($appointments as $appointment) {
+            $doctorRecord = DB::table('doctors')->where('id', $appointment->appointment_with)->first();
+            
+            // حقن اسم الطبيب الصحيح مباشرة في كائن الموعد
+            $appointment->doctor_name_override = $doctorRecord ? $doctorRecord->name_ar : 'طبيب غير محدد';
+        }
+
+        return $appointments;
     }
-//    public function pat_appoints()
-//     {
-//         $user = auth()->user();
-//         if (!$user) {
-//             return response()->json(['error' => 'Unauthenticated'], 401);
-//         }
-//         $user_id = $user->id;
-        
-//         $today = Carbon::today()->format('Y-m-d');
-        
-//         return Appointment::with('doctor', 'timeSlot')
-//             ->where('appointment_for', $user_id)
-//             ->whereDate('appointment_date', '>=', $today) // جلب المواعيد القادمة وتاريخ اليوم
-//             ->where('is_deleted', 0)
-//             ->orderBy('id', 'DESC')
-//             ->get();
-//     }
-    // الشغال لحد28 الشهر
-    // public function pat_appoints()
-    // {
-    //     $user = auth()->user();
-    //     if (!$user) {
-    //         return response()->json(['error' => 'Unauthenticated'], 401);
-    //     }
-    //     $user_id = $user->id;
-    //     \Log::info("جاري جلب مواعيد المستخدم ID: " . $user_id);
-        
-    //     $today = Carbon::today()->format('Y-m-d');
-        
-    //     // 1. جلب المواعيد وحفظها في متغير أولاً
-    //     $appointments = Appointment::with('doctor', 'timeSlot')
-    //         ->where('appointment_for', $user_id)
-    //         // ->whereDate('appointment_date', '>=', $today)
-    //         ->where('is_deleted', 0)
-    //         ->orderBy('id', 'DESC')
-    //         ->get();
+   
 
-    //     // 2. فحص اللوقات قبل الخروج من الدالة
-    //     foreach($appointments as $app) {
-    //         \Log::info("Appointment ID: {$app->id} | Doctor ID in appointment: {$app->appointment_with} | Doctor Name Found: " . optional($app->doctor)->name_ar);
-    //     }
 
-    //     \Log::info("عدد المواعيد التي تم العثور عليها: " . $appointments->count());
-
-    //     // 3. إرجاع النتائج نهائياً
-    //     return $appointments;
-    // }
-//old run
-    // public function doc_appoints()
-    // {
-    //     $user = auth()->user();
-    //     $user_id = $user->id;
-    //     $today = Carbon::today()->format('Y/m/d');
-    //     $doctor = doctors::where('user_id', $user_id)->first();
-    //     $doc_id = $doctor->id;
-    //     return Appointment::with('patient', 'timeSlot')
-    //         ->where('appointment_with', $user_id)
-    //         ->whereDate('appointment_date', '>', $today)
-    //         ->where('is_deleted', 0)
-    //         ->orderBy('id', 'DESC')->get();
-    // }
-
-    // public function doc_today_appoints()
-    // {
-    //     $user = auth()->user();
-    //     $user_id = $user->id;
-    //     $today = Carbon::today()->format('Y/m/d');
-    //     $doctor = doctors::where('user_id', $user_id)->first();
-    //     $doc_id = $doctor->id;
-    //     return Appointment::with('patient', 'timeSlot')
-    //         ->where('appointment_with', $user_id)
-    //         ->whereDate('appointment_date', '=', $today)
-    //         ->where('is_deleted', 0)
-    //         ->orderBy('id', 'DESC')->get();
-    // }
     public function doc_appoints()
 {
     $user = auth()->user();
@@ -204,69 +125,37 @@ class AppointmentRepository implements IAppointmentRepository
         
     return $appointments;
 }
-// شغالة 30
-    // public function doc_appoints()
-    // {
-    //     $user = auth()->user();
-        
-    //     // 1. جلب بيانات الطبيب وحماية الكود من الانهيار إذا كان فارغاً
-    //     $doctor = \App\Models\back\doctors::where('user_id', $user->id)->first();
-    //     if (!$doctor) {
-    //         return []; // إرجاع مصفوفة فارغة بدلاً من الخطأ 500
-    //     }
 
-    //     // 2. توحيد صيغة التاريخ
-    //     $today = \Carbon\Carbon::today()->format('Y-m-d');
-        
-    //     return Appointment::with('patient', 'timeSlot')
-    //         // 3. البحث باستخدام $doctor->id (الذي صلحناه سابقاً) بدلاً من user_id
-    //         ->where('appointment_with', $doctor->id)
-    //         ->whereDate('appointment_date', '>', $today)
-    //         ->where('is_deleted', 0)
-    //         ->orderBy('id', 'DESC')->get();
-    // }
-    public function doc_today_appoints()
-    {
-        $user = auth()->user();
-        
-        $doctor = \App\Models\back\doctors::where('user_id', $user->id)->first();
-        if (!$doctor) {
-            \Log::error("DEBUG: الحساب رقم " . $user->id . " غير مربوط بأي طبيب في الداتابيز!");
-            return [];
-        }
+   
+    
+    
+    
+  public function doc_today_appoints()
+{
+    $user = auth()->user();
+    
+    // 1. جلب الطبيب المرتبط بهذا المستخدم
+    $doctor = \App\Models\back\doctors::where('user_id', $user->id)->first();
+    
+    // 2. طباعة للتأكد من المعرفات
+    \Log::info("DEBUG: User ID: " . $user->id . " | Doctor ID found: " . ($doctor ? $doctor->id : 'NOT FOUND'));
 
-        $today = \Carbon\Carbon::today()->format('Y-m-d');
-        
-        $appointments = Appointment::with('patient', 'timeSlot')
-            ->where('appointment_with', $doctor->id)
-            ->whereDate('appointment_date', '=', $today)
-            ->where('is_deleted', 0)
-            ->orderBy('id', 'DESC')->get();
-            
-        // 🔴 هذا السطر سيكشف لنا السر!
-        \Log::info("DEBUG: الطبيب رقم: " . $doctor->id . " | يبحث عن مواعيد بتاريخ: " . $today . " | النتيجة: وجد " . $appointments->count() . " مواعيد");
-
-        return $appointments;
+    if (!$doctor) {
+        return [];
     }
     
-// new
-    // public function doc_today_appoints()
-    // {
-    //     $user = auth()->user();
-        
-    //     $doctor = \App\Models\back\doctors::where('user_id', $user->id)->first();
-    //     if (!$doctor) {
-    //         return [];
-    //     }
+    // 3. جلب المواعيد باستخدام ID الطبيب الذي وجدناه
+    $appointments = Appointment::with('patient', 'timeSlot')
+        ->where('appointment_with', $doctor->id) // هذا يجب أن يكون هو الرقم 7
+        ->where('is_deleted', 0)
+        ->get();
 
-    //     $today = \Carbon\Carbon::today()->format('Y-m-d');
-        
-    //     return Appointment::with('patient', 'timeSlot')
-    //         ->where('appointment_with', $doctor->id)
-    //         ->whereDate('appointment_date', '=', $today) // '=' تعني مواعيد اليوم فقط
-    //         ->where('is_deleted', 0)
-    //         ->orderBy('id', 'DESC')->get();
-    // }
+    \Log::info("DEBUG: Appointments count for Doctor ID " . $doctor->id . " is: " . $appointments->count());
+
+    return $appointments;
+}
+   
+   
     public function pat_canceled_appoints()
     {
         $user = auth()->user();
@@ -335,82 +224,45 @@ class AppointmentRepository implements IAppointmentRepository
         });
     }
 
-    // public function store($input)
-    // {
-    //     $user = auth()->user();
-    //     try {
-    //         $date = $input['appointment_date'];
-    //         $newDate = Carbon::createFromFormat('m/d/Y', $date)->format('Y-m-d');
-    //         if ($user->roles_name == 'Patient') {
-    //             $id_doc = $input['appointment_with'];
-    //             $doctor = doctors::find($id_doc);
-    //             $apointment = Appointment::create([
-    //                 'appointment_for' => $user->id,
-    //                 'appointment_with' => $doctor->user_id,
-    //                 'appointment_date' => $newDate,
-    //                 'available_slot' => $input['available_slot'],
-    //             ]);
-    //         } elseif ($user->roles_name == 'Doctor') {
-    //             $apointment = Appointment::create([
-    //                 'appointment_for' => $input['appointment_for'],
-    //                 'appointment_with' => $user->id,
-    //                 'appointment_date' => $newDate,
-    //                 'available_slot' => $input['available_slot'],
-    //             ]);
-    //         } elseif ($user->roles_name == 'Reception') {
-    //             $id_doc = $input['appointment_with'];
-    //             $doctor = doctors::find($id_doc);
-    //             $apointment = Appointment::create([
-    //                 'appointment_for' => $input['appointment_for'],
-    //                 'appointment_with' => $doctor->user_id,
-    //                 'appointment_date' => $newDate,
-    //                 'available_slot' => $input['available_slot'],
-    //             ]);
-    //         }
-    //         return $apointment;
-    //     } catch (\Exception $ex) {
-    //         return $ex;
-    //     }
-    // }
+   
+
 
     public function store($input)
     {
         $user = auth()->user();
         try {
             $date = $input['appointment_date'];
-            
-            // تحويل التاريخ بأمان
             $newDate = \Carbon\Carbon::parse($date)->format('Y-m-d');
             
-            // تجهيز الوقت بصيغة H:i:s
             $time = isset($input['time']) ? $input['time'] : $input['available_slot'];
             if (strlen($time) == 5) {
                 $time .= ':00'; 
             }
 
-            $id_doc = $input['appointment_with'];
+            // 🔴 الاعتماد المباشر والصريح على الـ ID القادم من التطبيق دون أي بحث يغيره!
+            $doctorId = $input['appointment_with'];
 
-            // 🔴 التعديل هنا: قمنا بحذف سطر 'available_slot' من أوامر الحفظ 
-            // لأن الداتابيز لديك ترفضه وتطلب عمود 'time' فقط
-            
             if ($user->hasSystemRole('patient')) {
                 $apointment = Appointment::create([
                     'appointment_for' => $user->id,
-                    'appointment_with' => $id_doc,
+                    'appointment_with' => $doctorId, // حفظ الـ ID المباشر كما أرسله التطبيق تماماً
                     'appointment_date' => $newDate,
                     'time' => $time, 
                 ]);
             } elseif ($user->hasSystemRole('doctor')) {
+                $doctorRecord = \App\Models\back\doctors::where('user_id', $user->id)->first();
+                $docRealId = $doctorRecord ? $doctorRecord->id : $user->id;
+                
                 $apointment = Appointment::create([
                     'appointment_for' => $input['appointment_for'],
-                    'appointment_with' => $user->id,
+                    'appointment_with' => $docRealId,
                     'appointment_date' => $newDate,
                     'time' => $time,
                 ]);
             } elseif ($user->hasSystemRole('secretary')) {
                 $apointment = Appointment::create([
                     'appointment_for' => $input['appointment_for'],
-                    'appointment_with' => $id_doc,
+                    'appointment_with' => $doctorId,
                     'appointment_date' => $newDate,
                     'time' => $time,
                 ]);
