@@ -85,6 +85,9 @@ insert into cln_x_medical_his (cat ,med_id,patient,note)
      */
     public function edit(Request $request)
     {
+        if ($request->user()->hasSystemRole('doctor') && $request->filled('visit')) {
+            return redirect()->route('consultations.edit', $request->integer('visit'));
+        }
         $arr = array();
         $id = $request['medical'];
         $visit = $request['visit'];

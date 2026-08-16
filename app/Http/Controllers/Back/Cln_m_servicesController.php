@@ -120,7 +120,8 @@ public function index()
         $dia10 = "";
         $cln_m_medical_his_cats = cln_m_medical_his_cats::all();
 
-        $visit = cln_x_visits::find($id);
+        $visit = cln_x_visits::findOrFail($id);
+        $this->authorize('view', $visit);
         $patient = gnr_m_patients::find($visit->patient);
         $visitID = $visit->id;
         $patientId  = $visit->patient;
@@ -147,6 +148,9 @@ public function index()
      */
     public function edit(Request $request)
     {
+        if ($request->user()->hasSystemRole('doctor') && $request->filled('visit')) {
+            return redirect()->route('consultations.edit', $request->integer('visit'));
+        }
         $val = $this->Service->edit($request);
 
         return view('back.services.edit',

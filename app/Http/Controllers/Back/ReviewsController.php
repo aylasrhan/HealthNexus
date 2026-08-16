@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Repositories\Reviews\IReviewRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use App\Models\back\doctors;
 
 class ReviewsController extends Controller
 {
@@ -21,8 +23,22 @@ class ReviewsController extends Controller
     }
     public function index()
     {
+        $ratingsAvailable = Schema::hasColumn('doctors', 'revisions_num')
+            && Schema::hasColumn('doctors', 'total_rate');
 
-        return view('back.ads.index');
+        $doctorsQuery = doctors::query()->with(['user', 'gnr_m_clinics']);
+        $doctors = ($ratingsAvailable
+            ? $doctorsQuery->orderByDesc('revisions_num')
+            : $doctorsQuery->orderBy('name_ar'))
+            ->paginate(20);
+
+        $summary = [
+            'doctors' => doctors::query()->count(),
+            'reviews' => $ratingsAvailable ? (int) doctors::query()->sum('revisions_num') : null,
+            'rated_doctors' => $ratingsAvailable ? doctors::query()->where('revisions_num', '>', 0)->count() : null,
+        ];
+
+        return view('back.review.index', compact('doctors', 'summary', 'ratingsAvailable'));
     }
 
     /**

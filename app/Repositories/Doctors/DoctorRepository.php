@@ -29,7 +29,9 @@ class DoctorRepository implements IDoctorRepository
 
     public function index()
     {
-        return doctors::with('user', 'gnr_m_clinics')->get();
+        return doctors::with('user', 'gnr_m_clinics')
+            ->orderByDesc('id')
+            ->paginate(12);
     }
 
     public function show($subgrp)

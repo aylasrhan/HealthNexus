@@ -149,16 +149,16 @@ public function get_booked_times(Request $request): JsonResponse
 public function appointment_store(Request $request, \App\Repositories\Appointments\AppointmentRepository $appointmentRepo): JsonResponse
 {
     $user = auth()->user();
-    $role = $user->roles_name;
+    $role = $user->primarySystemRole();
     $userId = $user->id;
 
-    if ($role == 'Patient') {
+    if ($role === 'patient') {
         $validator = Validator::make($request->all(), [
             'appointment_with' => 'required',
             'appointment_date' => 'required',
             'available_slot' => 'required',
         ]);
-    } elseif ($role == 'Doctor') {
+    } elseif ($role === 'doctor') {
         $validator = Validator::make($request->all(), [
             'appointment_for' => 'required',
             'appointment_date' => 'required',
@@ -171,7 +171,7 @@ public function appointment_store(Request $request, \App\Repositories\Appointmen
     }
 
     // 🔴 === بداية الكود الجديد للمطابقة الذكية للوقت === 🔴
-    $doctorId = ($role == 'Patient') ? $request->appointment_with : $userId;
+    $doctorId = ($role === 'patient') ? $request->appointment_with : $userId;
 
     $existingAppointments = \App\Models\back\Appointment::where('appointment_with', $doctorId)
         ->where('appointment_date', $request->appointment_date)
@@ -205,7 +205,8 @@ public function appointment_store(Request $request, \App\Repositories\Appointmen
             return $this->returnSuccess("D00", "Appointment successfully");
         }
     } catch (\Exception $e) {
-        return $this->returnError("D01", $e->getMessage());
+        report($e);
+        return $this->returnError("D01", "Unable to create appointment.");
     }
 }
     // public function appointment_store(Request $request): JsonResponse
@@ -256,22 +257,24 @@ public function appointment_store(Request $request, \App\Repositories\Appointmen
     public function appointment_update(Request $request): JsonResponse
     {
         $user = auth()->user();
-        $role = $user->roles_name;
+        $role = $user->primarySystemRole();
         $userId = $user->id;
-        if ($role == 'Patient') {
+        if ($role === 'patient') {
             $validator = Validator::make($request->all(), [
                 'appointment_with' => 'required',
                 'appointment_date' => 'required',
                 'available_slot' => 'required',
                 'appointment' => 'required',
             ]);
-        } elseif ($role == 'Doctor') {
+        } elseif ($role === 'doctor') {
             $validator = Validator::make($request->all(), [
                 'appointment_for' => 'required',
                 'appointment_date' => 'required',
                 'available_slot' => 'required',
                 'appointment' => 'required',
             ]);
+        } else {
+            abort(403);
         }
         if ($validator->fails()) {
             return $this->returnError("V00", $validator->errors());
@@ -280,17 +283,19 @@ public function appointment_store(Request $request, \App\Repositories\Appointmen
         if (!$appointment) {
             return $this->returnError("D01", "Appointment not exist..");
         }
+        $this->authorize('update', $appointment);
         $input = $request->all();
-        if ($role == 'Patient') {
+        if ($role === 'patient') {
             $input['appointment_for'] = $userId;
-        } elseif ($role == 'Doctor') {
+        } elseif ($role === 'doctor') {
             $input['appointment_with'] = $userId;
         }
         try {
             $this->AppointmentRepository->update($input, $appointment);
             return $this->returnSuccess("D00", "Appointment Updated successfully");
-        } catch (Exception $e) {
-            return $this->returnError("D01", $e->getMessage());
+        } catch (\Throwable $e) {
+            report($e);
+            return $this->returnError("D01", "Unable to update appointment.");
         }
     }
 
@@ -338,6 +343,7 @@ public function appointment_store(Request $request, \App\Repositories\Appointmen
 //     }
 public function pat_appoints(): JsonResponse
 {
+    abort_unless(auth()->user()->hasSystemRole('patient'), 403);
     $appointments = $this->AppointmentRepository->pat_appoints(); // تجلب البيانات مع الـ doctor
 
     if ($appointments->isEmpty()) {
@@ -363,6 +369,7 @@ public function pat_appoints(): JsonResponse
 }
     public function doc_today_appoints(): JsonResponse
     {
+        abort_unless(auth()->user()->hasSystemRole('doctor'), 403);
         $appointments = $this->AppointmentRepository->doc_today_appoints();
         if (!$appointments) {
             return $this->returnError("D01", "There are no appointments..");
@@ -373,6 +380,7 @@ public function pat_appoints(): JsonResponse
 
     public function pat_canceled_appoints(): JsonResponse
     {
+        abort_unless(auth()->user()->hasSystemRole('patient'), 403);
         $appointments = $this->AppointmentRepository->pat_canceled_appoints();
         if (!$appointments) {
             return $this->returnError("D01", "There are no appointments..");
@@ -382,6 +390,7 @@ public function pat_appoints(): JsonResponse
     }
 
     public function pat_previos_appoints():JsonResponse{
+        abort_unless(auth()->user()->hasSystemRole('patient'), 403);
         $appointments = $this->AppointmentRepository->pat_previos_appoints();
         if (!$appointments) {
             return $this->returnError("D01", "There are no appointments..");
@@ -402,6 +411,7 @@ public function pat_appoints(): JsonResponse
         if (!$appointment) {
             return $this->returnError("D01", "Appointment Dos not Exist. . ");
         } else {
+            $this->authorize('cancel', $appointment);
             $appoint = $appointment->id;
             $success = $this->AppointmentRepository->cancel_appoint($appoint);
             if (!$success) {
@@ -423,6 +433,7 @@ public function pat_appoints(): JsonResponse
         if (!$appointment) {
             return $this->returnError("D01", "appointment not exist..");
         }
+        $this->authorize('delete', $appointment);
         $appoint = $this->AppointmentRepository->destroy($appointment->id);
         return $this->returnSuccess("D00", "appointment deleted successfully..");
     }
@@ -450,7 +461,10 @@ public function pat_appoints(): JsonResponse
 //     }
 public function reject_appointment(Request $request, \App\Repositories\Appointments\AppointmentRepository $appointmentRepo)
     {
-        $appointmentId = $request->input('appointment_id');
+        $validated = $request->validate(['appointment_id' => ['required', 'integer', 'exists:appointments,id']]);
+        $appointment = Appointment::findOrFail($validated['appointment_id']);
+        $this->authorize('cancel', $appointment);
+        $appointmentId = $appointment->id;
         
         // نستخدم دالة الإلغاء الجاهزة لديك في الـ Repository
         $updatedAppointment = $appointmentRepo->cancel_appoint($appointmentId);
@@ -470,7 +484,10 @@ public function reject_appointment(Request $request, \App\Repositories\Appointme
     }
 public function accept_appointment(\Illuminate\Http\Request $request, \App\Repositories\Appointments\AppointmentRepository $appointmentRepo)
 {
-    $appointmentId = $request->input('appointment_id');
+    $validated = $request->validate(['appointment_id' => ['required', 'integer', 'exists:appointments,id']]);
+    $appointment = Appointment::findOrFail($validated['appointment_id']);
+    $this->authorize('accept', $appointment);
+    $appointmentId = $appointment->id;
     
     // إرسال الطلب إلى ملف الـ Repository
     $updatedAppointment = $appointmentRepo->accept_appoint($appointmentId);
@@ -520,6 +537,7 @@ public function accept_appointment(\Illuminate\Http\Request $request, \App\Repos
 // }
 public function doc_appoints(): \Illuminate\Http\JsonResponse
 {
+    abort_unless(auth()->user()->hasSystemRole('doctor'), 403);
     $appointments = $this->AppointmentRepository->doc_appoints();
     
     if (!$appointments || count($appointments) == 0) {

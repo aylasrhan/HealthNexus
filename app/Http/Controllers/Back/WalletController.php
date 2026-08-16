@@ -30,9 +30,15 @@ class WalletController extends Controller
     }
     public function index()
     {
-        $clinics = gnr_m_clinics::all();
-        $patien = $this->WalletRepository->index();
-        return view('back.patients.index', compact('patien','clinics'));
+        $transactions = $this->WalletRepository->index();
+
+        $summary = DB::table('wallet')
+            ->selectRaw('COUNT(*) as transactions_count')
+            ->selectRaw('COALESCE(SUM(CASE WHEN statue = 0 THEN value_changing ELSE 0 END), 0) as additions')
+            ->selectRaw('COALESCE(SUM(CASE WHEN statue = 1 THEN value_changing ELSE 0 END), 0) as withdrawals')
+            ->first();
+
+        return view('back.wallet.index', compact('transactions', 'summary'));
     }
 
     /**

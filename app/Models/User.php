@@ -17,6 +17,8 @@ use Illuminate\Validation\Rules\File;
 //use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 use Laravel\Passport\HasApiTokens;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -44,6 +46,7 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $hidden = [
         'password',
         'remember_token',
+        'verification_code',
     ];
 
     /**
@@ -68,6 +71,54 @@ class User extends Authenticatable implements MustVerifyEmail
     public function Question(): HasOne
     {
         return $this->hasOne(Question::class,'user_id', 'id');
+    }
+
+    public function systemRoles(): Collection
+    {
+        return collect(Arr::wrap($this->roles_name))
+            ->merge($this->getRoleNames())
+            ->filter()
+            ->map(fn ($role) => self::canonicalRoleName((string) $role))
+            ->filter()
+            ->unique()
+            ->values();
+    }
+
+    public function hasSystemRole(string ...$roles): bool
+    {
+        $expected = collect($roles)
+            ->map(fn ($role) => self::canonicalRoleName($role));
+
+        return $this->systemRoles()->intersect($expected)->isNotEmpty();
+    }
+
+    public function primarySystemRole(): string
+    {
+        return (string) ($this->systemRoles()->first() ?: 'patient');
+    }
+
+    public static function canonicalRoleName(string $role): ?string
+    {
+        $normalized = strtolower(str_replace([' ', '-'], '_', trim($role)));
+
+        return match ($normalized) {
+            'super_admin', 'admin', 'administrator', 'مدير', 'مدير_النظام' => 'super_admin',
+            'secretary', 'reception', 'receptionist', 'سكرتير', 'سكرتارية', 'استقبال' => 'secretary',
+            'doctor', 'طبيب' => 'doctor',
+            'patient', 'user', 'مريض', 'مستخدم' => 'patient',
+            default => $normalized ?: null,
+        };
+    }
+
+    public static function roleLabel(string $role): string
+    {
+        return match (self::canonicalRoleName($role)) {
+            'super_admin' => 'مدير النظام',
+            'secretary' => 'السكرتارية',
+            'doctor' => 'طبيب',
+            'patient' => 'مريض',
+            default => 'مستخدم',
+        };
     }
 
     public static function rules($id = 0)
