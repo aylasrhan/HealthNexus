@@ -18,7 +18,7 @@ class AppointmentRepository implements IAppointmentRepository
     use UploadFileTrait;
     use ResponseTrait;
 
-    public $appointment;
+    public $Appointment;
 
     public function __construct(Appointment $appointment)
     {
@@ -28,33 +28,41 @@ class AppointmentRepository implements IAppointmentRepository
     public function index(){
         $request = request();
         $user = auth()->user();
-        $role = $user->roles_name;
         $query = Appointment::query()->with('doctor','patient','timeSlot')
+            ->where('is_deleted', 0)
             ->orderBy('id', 'DESC');
-        $appointments = null;
-        if ($d_name = $request->d_name) {
-            $query->where('doctor.name', 'LIKE', "%{$d_name}%");
-        }
-        if ($p_name = $request->p_name) {
-            $query->where('patient.name', 'LIKE', "%{$p_name}%");
-        }
-//        if ($d_name = $request->query('d_name')) {
-//            $query->where('appointment_with.name', 'LIKE', "%{$d_name}%");
-//        }
-//        if ($d_name = $request->query('d_name')) {
-//            $query->where('appointment_with.name', 'LIKE', "%{$d_name}%");
-//        }
-//        if ($d_name = $request->query('d_name')) {
-//            $query->where('appointment_with.name', 'LIKE', "%{$d_name}%");
-//        }
-        if ($role == 'Doctor'){
-            $appointments = $query->where('appointment_with',$user->id)
-                ->where('is_deleted','=',0)->get();
-        }elseif ($role == 'Reception'||$role == 'Admin'){
 
-            $appointments = $query->where('is_deleted',0)->get();
+        if ($d_name = $request->query('d_name')) {
+            $query->whereHas('doctor', function ($doctorQuery) use ($d_name) {
+                $doctorQuery->where('name_ar', 'LIKE', "%{$d_name}%");
+            });
         }
-        return $appointments;
+        if ($p_name = $request->query('p_name')) {
+            $query->whereHas('patient', function ($patientQuery) use ($p_name) {
+                $patientQuery->where('name', 'LIKE', "%{$p_name}%");
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', (int) $request->query('status'));
+        }
+
+        if ($request->filled('date')) {
+            $query->whereDate('appointment_date', $request->query('date'));
+        }
+
+        if ($request->query('period') === 'today') {
+            $query->whereDate('appointment_date', Carbon::today());
+        } elseif ($request->query('period') === 'upcoming') {
+            $query->whereDate('appointment_date', '>', Carbon::today());
+        }
+
+        if ($user->hasSystemRole('doctor')) {
+            $doctorId = optional($user->doctor)->id;
+            $query->whereIn('appointment_with', array_filter([$user->id, $doctorId]));
+        }
+
+        return $query->get();
     }
 
     public function patient_appoi($id){
@@ -313,22 +321,18 @@ class AppointmentRepository implements IAppointmentRepository
 
     public function update($input, Appointment $appointment)
     {
-        $date = $input['appointment_date'];
-        $newDate = Carbon::createFromFormat('m/d/Y', $date)->format('Y-m-d');
-        try {
-            DB::transaction(function () use ($input, $appointment, $newDate) {
-                $appoint = Appointment::findOrFail($appointment)->get();
-                $appoint->appointment_for = $input['appointment_for'];
-                $appoint->appointment_with = $input['appointment_with'];
-                $appoint->appointment_date = $newDate;
-                $appoint->slot_time = $input['slot_time'];
-                $appoint->save();
-            });
-            DB::commit();
-        } catch (\Exception $ex) {
-            DB::rollback();
-        }
+        $date = Carbon::parse($input['appointment_date'])->format('Y-m-d');
 
+        return DB::transaction(function () use ($input, $appointment, $date) {
+            $appointment->appointment_for = $input['appointment_for'] ?? $appointment->appointment_for;
+            $appointment->appointment_with = $input['appointment_with'] ?? $appointment->appointment_with;
+            $appointment->appointment_date = $date;
+            $appointment->available_slot = $input['available_slot'] ?? $appointment->available_slot;
+            $appointment->time = $input['time'] ?? $input['available_slot'] ?? $appointment->time;
+            $appointment->save();
+
+            return $appointment->fresh(['patient', 'doctor', 'timeSlot']);
+        });
     }
 
     // public function store($input)
@@ -389,21 +393,21 @@ class AppointmentRepository implements IAppointmentRepository
             // 🔴 التعديل هنا: قمنا بحذف سطر 'available_slot' من أوامر الحفظ 
             // لأن الداتابيز لديك ترفضه وتطلب عمود 'time' فقط
             
-            if ($user->roles_name == 'Patient') {
+            if ($user->hasSystemRole('patient')) {
                 $apointment = Appointment::create([
                     'appointment_for' => $user->id,
                     'appointment_with' => $id_doc,
                     'appointment_date' => $newDate,
                     'time' => $time, 
                 ]);
-            } elseif ($user->roles_name == 'Doctor') {
+            } elseif ($user->hasSystemRole('doctor')) {
                 $apointment = Appointment::create([
                     'appointment_for' => $input['appointment_for'],
                     'appointment_with' => $user->id,
                     'appointment_date' => $newDate,
                     'time' => $time,
                 ]);
-            } elseif ($user->roles_name == 'Reception') {
+            } elseif ($user->hasSystemRole('secretary')) {
                 $apointment = Appointment::create([
                     'appointment_for' => $input['appointment_for'],
                     'appointment_with' => $id_doc,
@@ -428,6 +432,9 @@ class AppointmentRepository implements IAppointmentRepository
     public function cancel_appoint($appointment)
     {
         $appoint = Appointment::find($appointment);
+        if (!$appoint) {
+            return null;
+        }
         $appoint->status = 2;
         $appoint->save();
         return $appoint;
@@ -468,39 +475,43 @@ class AppointmentRepository implements IAppointmentRepository
 // }
 public function accept_appoint($appointmentId)
 {
-    // 1. جلب الموعد (هنا لارافل سيتعرف على الموديل تلقائياً)
-    $appoint = Appointment::find($appointmentId);
-    if (!$appoint) {
-        return null;
-    }
+    return DB::transaction(function () use ($appointmentId) {
+        $appoint = Appointment::query()->lockForUpdate()->find($appointmentId);
+        if (!$appoint) {
+            return null;
+        }
 
-    $appoint->status = 1; 
-    $appoint->save();
+        $patientProfile = \App\Models\back\gnr_m_patients::where('user_id', $appoint->appointment_for)->firstOrFail();
+        $doctor = \App\Models\back\doctors::query()
+            ->whereKey($appoint->appointment_with)
+            ->orWhere('user_id', $appoint->appointment_with)
+            ->firstOrFail();
+        $clinicId = (int) $doctor->subgrp;
+        if ($clinicId <= 0) {
+            throw new \RuntimeException('لا توجد عيادة مرتبطة بالطبيب.');
+        }
 
-    // 2. جلب رقم المريض الحقيقي
-    $patientProfile = \App\Models\back\gnr_m_patients::where('user_id', $appoint->appointment_for)->first();
-    $realPatientId = $patientProfile ? $patientProfile->id : $appoint->appointment_for;
+        $visitTimestamp = strtotime($appoint->appointment_date.' '.($appoint->time ?: '00:00:00'));
+        $visit = \App\Models\back\cln_x_visits::query()
+            ->where('patient', $patientProfile->id)
+            ->where('d_start', $visitTimestamp)
+            ->lockForUpdate()
+            ->first();
+        if (!$visit) {
+            $visit = new \App\Models\back\cln_x_visits();
+            $visit->timestamps = false;
+            $visit->patient = $patientProfile->id;
+            $visit->clinic = $clinicId;
+            $visit->type = 1;
+            $visit->status = 0;
+            $visit->d_start = $visitTimestamp;
+            $visit->save();
+        }
 
-    // 3. جلب بيانات الطبيب لمعرفة العيادة
-    $doctor = \App\Models\back\doctors::find($appoint->appointment_with);
-    
-    // 4. تحديد العيادة (رقم عيادة الطبيب الحقيقية)
-    $clinicId = $appoint->clinic_id ?? ($doctor->clinic ?? ($doctor->clinic_id ?? 1));
+        $appoint->status = 1;
+        $appoint->save();
 
-    // 5. إنشاء الزيارة
-    $visit = new \App\Models\back\cln_x_visits();
-    $visit->timestamps = false; 
-    $visit->patient = $realPatientId; 
-    $visit->clinic = $clinicId; // 👈 هنا سيتم حفظ العيادة الحقيقية
-    
-    $time = $appoint->time ?? $appoint->available_slot ?? '00:00:00';
-    $dateTimeString = $appoint->appointment_date . ' ' . $time;
-    $visit->d_start = strtotime($dateTimeString); 
-    
-    $visit->status = 0; 
-    $visit->type = 1; 
-    $visit->save(); 
-
-    return $appoint;
+        return $appoint;
+    });
 }
 }

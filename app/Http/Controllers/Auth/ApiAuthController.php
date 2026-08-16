@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use App\Mail\VerificationCodeMail;
 use App\Models\back\gnr_m_nationality;
@@ -100,33 +102,34 @@ class ApiAuthController extends Controller
    public function register(Request $request): JsonResponse
 {
     $validator = Validator::make($request->all(), [
-        'name' => 'required',
-        'email' => 'required|email|unique:users',
-        'password' => 'required',
+        'name' => 'required|string|max:255',
+        'email' => 'required|email|max:255|unique:users,email',
+        'password' => 'required|string|min:8',
         'c_password' => 'required|same:password',
-        'roles_name' => 'required|in:Patient,Doctor',
-        
+        'roles_name' => 'nullable|in:patient',
+
         // حقول المريض (مطلوبة فقط إذا كان الدور Patient)
-        'mother_name' => 'nullable|required_if:roles_name,Patient',
-        'mobile' => 'nullable',
-        'birth_date' => 'nullable|required_if:roles_name,Patient',
-        'sex' => 'nullable|required_if:roles_name,Patient',
-        'blood' => 'nullable|required_if:roles_name,Patient',
-        'p_city' => 'nullable|required_if:roles_name,Patient',
-        'nationality' => 'nullable|required_if:roles_name,Patient',
-        'address' => 'nullable|required_if:roles_name,Patient',
-        
+        'mother_name' => 'required|string|max:255',
+        'mobile' => 'nullable|string|max:30',
+        'birth_date' => 'required|date_format:m/d/Y',
+        'sex' => 'required|integer|in:1,2',
+        'blood' => 'required|string|max:10',
+        'p_city' => 'required|integer|exists:gnr_m_cities,id',
+        'nationality' => 'required|integer|exists:gnr_m_nationality,id',
+        'address' => 'required|string|max:500',
+
         // حقول الطبيب (مطلوبة فقط إذا كان الدور Doctor)
-        'specialization' => 'nullable|required_if:roles_name,Doctor',
     ]);
 
     if ($validator->fails()) {
         return $this->returnError("V01", $validator->errors());
     }
 
-    $input = $request->all();
+    $input = $validator->validated();
+    $input['roles_name'] = ['patient'];
     $input['password'] = bcrypt($input['password']);
-    $input['verification_code'] = mt_rand(1000, 9999);
+    $verificationCode = (string) random_int(100000, 999999);
+    $input['verification_code'] = Hash::make($verificationCode);
     $input['Status'] = 'مفعل';
 
     try {
@@ -142,7 +145,9 @@ class ApiAuthController extends Controller
             ]);
 
             // إذا كان الدور مريض
-            if ($input['roles_name'] == 'Patient') {
+            $user->assignRole('patient');
+
+            if ($user->hasSystemRole('patient')) {
                 $newDate = Carbon::createFromFormat('m/d/Y', $input['birth_date'])->format('Y-m-d');
                 gnr_m_patients::create([
                     'f_name' => $input['name'],
@@ -156,9 +161,9 @@ class ApiAuthController extends Controller
                     'address' => $input['address'],
                     'user_id' => $user->id,
                 ]);
-            } 
+            }
             // إذا كان الدور طبيب
-            elseif ($input['roles_name'] == 'Doctor') {
+            elseif ($user->hasSystemRole('doctor')) {
                 \App\Models\back\doctors::create([
                     'name_ar' => $input['name'],
                     'specialization_ar' => $input['specialization'],
@@ -172,11 +177,13 @@ class ApiAuthController extends Controller
 
         $user = User::where('email', $input['email'])->first();
         $token = $user->createToken('Personal Access Token')->accessToken;
-        $this->sendMail($user, $input['verification_code']);
+        Cache::put("email_verification_expires:{$user->id}", true, now()->addMinutes(10));
+        $this->sendMail($user, $verificationCode);
 
         return $this->returnData("user_token", $token, 'Registered successfully, check your email.', "D00");
-    } catch (\Exception $ex) {
-        return $this->returnError("D01", $ex->getMessage());
+    } catch (\Throwable $ex) {
+        report($ex);
+        return $this->returnError("D01", 'Unable to complete registration.');
     }
 }
 
@@ -217,7 +224,7 @@ class ApiAuthController extends Controller
         // قمنا باستخدام 'roles_name' كما هو موجود في الداتابيز
         $data = [
             'user_token' => $token,
-            'roles_name' => $user->roles_name, 
+            'roles_name' => $user->roles_name,
         ];
 
         return $this->returnData("data", $data, 'User login successfully.', "A00");
@@ -227,18 +234,38 @@ class ApiAuthController extends Controller
 }
 
    public function verify(Request $request): JsonResponse
-{
+ {
+    $user = $request->user();
+    $validated = $request->validate(['code' => ['required', 'digits:6']]);
+    $cacheKey = "email_verification_expires:{$user->id}";
+
+    if (!Cache::has($cacheKey)) {
+        return $this->returnError("E05", "Verification code expired. Request a new code.");
+    }
+
+    if (!$user->verification_code || !Hash::check($validated['code'], $user->verification_code)) {
+        return $this->returnError("E03", "Verification code is incorrect.");
+    }
+
+    $user->forceFill([
+        'email_verified_at' => now(),
+        'verification_code' => null,
+    ])->save();
+    Cache::forget($cacheKey);
+
+    return $this->returnSuccess("Email verified successfully.");
+
     // أضفنا هذا السطر للتصحيح
     \Log::info("البيانات المرسلة: " . $request->getContent());
-    
+
     $user = auth()->user();
-    
+
     if (!$user) {
         return $this->returnError("E04", "المستخدم غير مسجل دخول (التوكين غير صحيح)");
     }
 
     $code = $request->code;
-    
+
     // إضافة Log للقيم للمقارنة
     \Log::info("الكود المرسل: " . $code . " - الكود في قاعدة البيانات: " . $user->verification_code);
 
@@ -253,6 +280,21 @@ class ApiAuthController extends Controller
 
     public function resend(): JsonResponse
     {
+        $user = request()->user();
+        $code = (string) random_int(100000, 999999);
+
+        $user->verification_code = Hash::make($code);
+        $user->save();
+        Cache::put("email_verification_expires:{$user->id}", true, now()->addMinutes(10));
+
+        try {
+            $this->sendMail($user, $code);
+            return $this->returnSuccess("Verification code sent successfully.");
+        } catch (\Throwable $exception) {
+            report($exception);
+            return $this->returnError("E02", "Unable to send verification code.");
+        }
+
         $user = auth()->user();
         $code = $user->verification_code;
         if ($this->sendMail($user, $code)) {
@@ -265,7 +307,7 @@ class ApiAuthController extends Controller
     public function home(): JsonResponse
     {
         $user = auth()->user();
-        if ($user->roles_name == 'Patient') {
+        if ($user->hasSystemRole('patient')) {
             $patient = User::with('gnr_m_patients')->find($user->id);
             return $this->returnData("user", $patient, "patient");
         } else
@@ -277,12 +319,11 @@ class ApiAuthController extends Controller
     public function profile(): JsonResponse
     {
         $user = auth()->user();
-        $role = $user->roles_name;
         $id = $user->id;
-        if ($role == 'Patient') {
+        if ($user->hasSystemRole('patient')) {
             $patient = gnr_m_patients::with('user')->where('user_id', $id)->first();
             return $this->returnData("patient", $patient, "patient", "D00");
-        } elseif ($role == 'Doctor') {
+        } elseif ($user->hasSystemRole('doctor')) {
             $doctor = doctors::with('user')->where('user_id', $id)->first();
             return $this->returnData("doctor", $doctor, "doctor", "D00");
         }
@@ -302,7 +343,7 @@ class ApiAuthController extends Controller
     }
     // أيلا
    public function getClinics() {
-    $clinics = gnr_m_clinics::all(); 
+    $clinics = gnr_m_clinics::all();
 
     return response()->json([
         'status' => 'success',
@@ -312,8 +353,8 @@ class ApiAuthController extends Controller
 // داخل ApiAuthController.php
 public function getNationalities()
 {
-    $nationalities = gnr_m_nationality::all(); 
-    
+    $nationalities = gnr_m_nationality::all();
+
     return response()->json([
         'status' => true,
         'data' => [
@@ -331,11 +372,11 @@ public function logout(Request $request): JsonResponse
 public function getCities()
 {
     $cities = gnr_m_cities::all();
-    
+
     return response()->json([
         'status' => true,
         'data' => [
-            'cities' => $cities 
+            'cities' => $cities
         ]
     ]);
 }

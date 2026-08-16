@@ -1,202 +1,61 @@
 @extends('layouts.master')
-@section('css')
-    <!--Internal   Notify -->
-    <link href="{{ URL::asset('assets/plugins/notify/css/notifIt.css') }}" rel="stylesheet"/>
-    <link href="{{URL::asset('assets/plugins/jquery-nice-select/css/nice-select.css')}}" rel="stylesheet"/>
-    <link href="{{URL::asset('assets/plugins/select2/css/select2.min.css')}}" rel="stylesheet">
-    <link href="{{URL::asset('assets/plugins/treeview/treeview-rtl.css')}}" rel="stylesheet" type="text/css"/>
 
-@section('title')
-    الاطباء
-@stop
+@section('title', 'المواعيد')
 
-
-@endsection
-@section('page-header')
-    <!-- breadcrumb -->
-    <div class="breadcrumb-header justify-content-between">
-        <div class="my-auto">
-            <div class="d-flex">
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb breadcrumb-style2">
-                        <li class="breadcrumb-item">
-                            <a href="{{ url('/' . $page='dashboard') }}">الصفحة الرئيسية</a>
-                        </li>
-                        <li class="breadcrumb-item active">الحجوزات</li>
-                    </ol>
-                </nav>
-            </div>
-        </div>
-    </div>
-    <!-- breadcrumb -->
-@endsection
 @section('content')
+    <x-ui.page-header title="المواعيد" description="متابعة الحجوزات وحالات التأكيد والإلغاء.">
+        <a href="{{ route('patients.index') }}" class="hn-btn hn-btn-primary"><i class="fe fe-user-plus"></i> اختيار مريض للحجز</a>
+    </x-ui.page-header>
 
-    @if (session('success'))
-        <div class="alert alert-outline-success" role="alert">
-            <button aria-label="Close" class="close" data-dismiss="alert" type="button">
-                <span aria-hidden="true">&times;</span></button>
-            <strong>Well done!</strong> {{ session('success') }}.
+    <x-ui.flash />
+
+    <section class="hn-panel">
+        <div class="hn-panel-header">
+            <div><h2 class="hn-panel-title">قائمة المواعيد</h2><p class="hn-panel-subtitle">{{ number_format(collect($appointments)->count()) }} موعدًا</p></div>
         </div>
-    @endif
-    @if (session('error'))
-        <div class="alert alert-outline-danger mg-b-0" role="alert">
-            <button aria-label="Close" class="close" data-dismiss="alert" type="button">
-                <span aria-hidden="true">&times;</span></button>
-            <strong>Oh snap!</strong> {{ session('error') }}.
+        <div class="hn-panel-body border-bottom">
+            <form action="{{ url('appointments') }}" method="GET" class="hn-filter-grid hn-filter-grid-wide">
+                @if($role !== 'doctor')
+                    <div class="form-group mb-0"><label for="appointment-doctor">اسم الطبيب</label><input id="appointment-doctor" class="form-control" name="d_name" value="{{ request('d_name') }}" placeholder="ابحث باسم الطبيب"></div>
+                @endif
+                <div class="form-group mb-0"><label for="appointment-patient">اسم المريض</label><input id="appointment-patient" class="form-control" name="p_name" value="{{ request('p_name') }}" placeholder="ابحث باسم المريض"></div>
+                <div class="form-group mb-0"><label for="appointment-status">الحالة</label><select id="appointment-status" class="form-control" name="status"><option value="">جميع الحالات</option><option value="0" @selected(request('status') === '0')>قيد الانتظار</option><option value="1" @selected(request('status') === '1')>مؤكد</option><option value="2" @selected(request('status') === '2')>ملغي</option></select></div>
+                <div class="form-group mb-0"><label for="appointment-date">التاريخ</label><input id="appointment-date" class="form-control" type="date" name="date" value="{{ request('date') }}"></div>
+                <div class="form-group mb-0"><label for="appointment-period">الفترة</label><select id="appointment-period" class="form-control" name="period"><option value="">جميع المواعيد</option><option value="today" @selected(request('period') === 'today')>اليوم</option><option value="upcoming" @selected(request('period') === 'upcoming')>القادمة</option></select></div>
+                <div class="hn-filter-actions"><button class="hn-btn hn-btn-primary" type="submit"><i class="fe fe-search"></i> تطبيق</button><a class="hn-btn hn-btn-light" href="{{ url('appointments') }}">مسح</a></div>
+            </form>
         </div>
-    @endif
 
-    <!-- row -->
-    <div class="row row-sm">
-        <div class="col-xl-12">
-            <div class="card">
-                <div class="card-header pb-0">
-                    <div class="d-flex justify-content-between">
-                        <h4 class="card-title mg-b-0">STRIPED ROWS</h4>
-                        <i class="mdi mdi-dots-horizontal text-gray"></i>
-                    </div>
-                    <form action="{{ URL::current() }}" method="get" class="row">
-                        @csrf
-                        @method('POST')
-                        <div class="parsley-input col-md-3 mg-t-20 mg-md-t-0" id="lnWrapper">
-                            <x-forms.label id=""><span class=""></span></x-forms.label>
-                            @if($role != 'Doctor')
-                            <x-forms.input placeholder=" اسم الطبيب" name="d_name"
-                                           class="form-control  nice-select  custom-select"/>
-                            @endif
-                            <x-forms.label id=""><span class=""></span></x-forms.label>
-                            <x-forms.input placeholder=" اسم المريض" name="p_name"
-                                           class="form-control  nice-select  custom-select"/>
-                        </div>
-
-                        <div class="parsley-input col-md-3 mg-t-20 mg-md-t-0" id="lnWrapper">
-                            <x-forms.label id=""><span class=""></span></x-forms.label>
-                            <select name="Status" id="select-beast"
-                                    class="form-control  nice-select  custom-select">
-                                <option value=0>معلق</option>
-                                <option value=1> مؤكد</option>
-                                <option value=2> ملغي</option>
-                            </select>
-                        </div>
-                        <div class="parsley-input col-md-3 mg-t-20 mg-md-t-0" id="lnWrapper">
-                            <x-forms.label id=""><span class=""></span></x-forms.label>
-                            <select name="date" id="select-beast"
-                                    class="form-control  nice-select  custom-select">
-                                <option value=0>اليوم</option>
-                                <option value=1> القادمة</option>
-                            </select>
-                        </div>
-                        <div class="parsley-input col-md-3 mg-md-t-0">
-                            <x-forms.label id=""><span class="">     </span></x-forms.label>
-                            <button class="btn btn-dark btn-" dir="ltr">Filter</button>
-                        </div>
-                    </form>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive border-top userlist-table">
-                        <table class="table card-table table-striped table-vcenter text-nowrap mb-0">
-                            <thead>
-                            <tr>
-                                @if($role != 'Doctor')
-                                <th class="wd-lg-8p"><span>اسم الطبيب</span></th>
-                                    <th class="wd-lg-8p"><span>العيادة </span></th>
+        @if(empty($appointments) || collect($appointments)->isEmpty())
+            <x-ui.empty title="لا توجد مواعيد" description="لا توجد نتائج مطابقة للفلاتر الحالية." icon="fe-calendar" />
+        @else
+            <div class="hn-table-responsive">
+                <table class="hn-table">
+                    <thead><tr><th>المريض</th><th>الطبيب والعيادة</th><th>التاريخ</th><th>الوقت</th><th>الحالة</th><th>الإجراءات</th></tr></thead>
+                    <tbody>
+                    @foreach($appointments as $appointment)
+                        @php
+                            $status = match((int)$appointment->status) {1 => ['مؤكد','success'], 2 => ['ملغي','danger'], default => ['قيد الانتظار','pending']};
+                            $doctor = $appointment->doctor;
+                        @endphp
+                        <tr>
+                            <td><div class="hn-person"><span class="hn-avatar">{{ mb_substr(optional($appointment->patient)->name ?? 'م', 0, 1) }}</span><div><strong>{{ optional($appointment->patient)->name ?? 'مريض غير محدد' }}</strong><small>#{{ $appointment->id }}</small></div></div></td>
+                            <td><strong class="d-block tx-13">{{ optional($doctor)->name_ar ?? 'طبيب غير محدد' }}</strong><small class="text-muted">{{ optional(optional($doctor)->gnr_m_clinics)->name_ar ?? 'العيادة غير محددة' }}</small></td>
+                            <td>{{ $appointment->appointment_date ? \Carbon\Carbon::parse($appointment->appointment_date)->format('Y/m/d') : '—' }}</td>
+                            <td>{{ $appointment->time ? \Carbon\Carbon::parse($appointment->time)->format('h:i A') : (optional($appointment->timeSlot)->from ?? '—') }}</td>
+                            <td><span class="hn-badge hn-badge-{{ $status[1] }}">{{ $status[0] }}</span></td>
+                            <td><div class="hn-row-actions">
+                                @if($role === 'doctor' && (int)$appointment->status === 1)
+                                    <a class="hn-icon-btn hn-icon-btn-primary" href="{{ route('consultations.start', $appointment) }}" title="بدء أو متابعة المعاينة" aria-label="بدء أو متابعة المعاينة"><i class="fe fe-clipboard"></i></a>
                                 @endif
-                                <th class="wd-lg-8p"><span>اسم المريض</span></th>
-                                <th class="wd-lg-8p"><span>اليوم</span></th>
-                                <th class="wd-lg-8p"><span>الوقت</span></th>
-                                <th class="wd-lg-8p"><span> الحالة</span></th>
-                                <th class="wd-lg-8p"><span>العمليات</span></th>
-                            </tr>
-                            </thead>
-                            <tbody id="deletePatent">
-                            @if($appointments != null)
-                            @foreach ($appointments as $key => $value)
-                                <tr>
-                                    @if($role != 'Doctor')
-                                    <td>{{$value->doctor->name}}</td>
-                                        <td>{{$value->doctor->doctor->gnr_m_clinics->name_ar}}</td>
-                                    @endif
-                                    <td>{{$value->patient->name}}</td>
-                                        <td>{{$value->appointment_date}}</td>
-                                    <td>{{$value->timeSlot->from}}</td>
-                                    <td>
-                                        @if($value->status == 0)
-                                            <i class="btn btn-sm btn-warning">معلق</i>
-                                        @elseif($value->status == 1)
-                                            <i class="btn btn-sm btn-success">مؤكد</i>
-                                        @elseif($value->status == 2)
-                                            <i class="btn btn-sm btn-danger">ملغي</i>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        @if($value->status != 2)
-                                            <a href="{{ route('patients.edit', $value->id) }}"
-                                               class="btn btn-sm btn-info"
-                                               title="تعديل الحجز"><i class="las la-pen"></i></a>
-                                        @endif
-                                        @if($value->status == 0)
-                                            <a href="{{ url('confirm-appointment/'. $value->id) }}"
-                                               class="btn btn-sm btn-success"
-                                               title="تأكيد"><i>تأكيد</i></a>
-                                        @endif
-                                        @if($value->status == 1)
-                                            <a href="{{ url('cancel-appointment/'. $value->id) }}"
-                                               class="btn btn-sm btn-danger"
-                                               title="الغاء"><i>الغاء</i></a>
-                                        @endif
-                                        <form action=""
-                                              style="display:inline" method="post"
-                                              enctype="multipart/form-data">
-                                            @csrf
-                                            @method('DELETE')
-                                            <input type="hidden" name="input" id="user_id" value="{{ $value->id }}">
-                                            <button type="submit" class="btn btn-sm btn-danger"><i
-                                                    class="las la-trash"></i></button>
-                                        </form>
-
-                                    </td>
-                                </tr>
-                            @endforeach
-                            @endif
-                            </tbody>
-                        </table>
-                    </div><!-- bd -->
-                </div><!-- bd -->
-            </div><!-- bd -->
-        </div>
-        <!--/div-->
-    </div>
-@endsection
-@section('js')
-    <!-- Internal Treeview js -->
-    <script src="{{URL::asset('assets/plugins/select2/js/select2.min.js')}}"></script>
-    <script src="{{URL::asset('assets/plugins/treeview/treeview.js')}}"></script>
-
-    <!--Internal  Notify js -->
-    <script src="{{ URL::asset('assets/plugins/notify/js/notifIt.js') }}"></script>
-    <script src="{{ URL::asset('assets/plugins/notify/js/notifit-custom.js') }}"></script>
-    <!--Internal  Datatable js -->
-    <script src="{{URL::asset('assets/js/table-data.js')}}"></script>
-    <script>
-        $('#deletePatent').on('submit', 'form', function (e) {
-            e.preventDefault();
-            $(this).closest("tr").remove();
-            $.ajax({
-                method: "POST",
-                headers: {
-                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                },
-                url: "{{route('patients.destroy','test')}}",
-                data: $(this).serialize()
-                ,
-                success: function (data) {
-                    alert(data.result);
-                },
-                error: function (xhr, status, error) {
-                    console.error(xhr);
-                }
-            });
-        });
-    </script>
+                                @if((int)$appointment->status === 0)<form action="{{ route('appointments.confirm', $appointment) }}" method="POST">@csrf @method('PATCH')<button class="hn-icon-btn" type="submit" title="تأكيد الموعد" aria-label="تأكيد الموعد"><i class="fe fe-check"></i></button></form>@endif
+                                @if((int)$appointment->status !== 2)<form action="{{ route('appointments.cancel', $appointment) }}" method="POST" onsubmit="return confirm('هل تريد إلغاء هذا الموعد؟')">@csrf @method('PATCH')<button class="hn-icon-btn hn-icon-btn-danger" type="submit" title="إلغاء الموعد" aria-label="إلغاء الموعد"><i class="fe fe-x"></i></button></form>@endif
+                            </div></td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </section>
 @endsection

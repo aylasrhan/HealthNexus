@@ -2,6 +2,9 @@
 
 namespace App\Models\back;
 
+use App\Models\Prescription;
+use App\Models\Invoice;
+use App\Models\VisitVital;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -9,8 +12,10 @@ use Illuminate\Database\Eloquent\Model;
 class cln_x_visits extends Model
 {
     use HasFactory;
-    protected $fillable = ['patient','clinic','type','d_start','note','price'];
+    protected $fillable = ['appointment_id','patient','clinic','doctor_id','type','d_start','status','note','price','completed_at','updated_at'];
     protected $table = 'cln_x_visits';
+    public $timestamps = false;
+    protected $casts = ['completed_at' => 'datetime', 'updated_at' => 'datetime'];
 
 
     public function patient()
@@ -26,6 +31,31 @@ class cln_x_visits extends Model
     public function cln_m_services()
     {
         return $this->belongsToMany(cln_m_services::class, 'cln_x_visits_services','visit_id','service');
+    }
+
+    public function appointment()
+    {
+        return $this->belongsTo(Appointment::class, 'appointment_id');
+    }
+
+    public function vitals()
+    {
+        return $this->hasOne(VisitVital::class, 'visit_id');
+    }
+
+    public function prescription()
+    {
+        return $this->hasOne(Prescription::class, 'visit_id');
+    }
+
+    public function issuedPrescription()
+    {
+        return $this->hasOne(Prescription::class, 'visit_id')->where('status', 'issued');
+    }
+
+    public function invoice()
+    {
+        return $this->hasOne(Invoice::class, 'visit_id');
     }
 
     public function cln_m_icd10()

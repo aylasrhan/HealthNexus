@@ -1,195 +1,51 @@
 @extends('layouts.master')
-@section('css')
-    <!--Internal   Notify -->
-    <link href="{{ URL::asset('assets/plugins/notify/css/notifIt.css') }}" rel="stylesheet" />
-    <link href="{{ URL::asset('assets/css/css.css') }}" rel="stylesheet" />
-@section('title')
-    الاطباء
-@stop
 
+@section('title', 'الأطباء')
 
-@endsection
-@section('page-header')
-<!-- breadcrumb -->
-<div class="breadcrumb-header justify-content-between">
-    <div class="my-auto">
-        <div class="d-flex">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb breadcrumb-style2">
-            <li class="breadcrumb-item">
-                <a href="{{ url('/' . $page='dashboard') }}">الصفحة الرئيسية</a>
-            </li>
-            <li class="breadcrumb-item">
-                <a href="{{ url('/' . $page='departments') }}">الاختصاصات</a>
-            </li>
-            <li class="breadcrumb-item active">الاطباء</li>
-                </ol></nav>
-        </div>
-    </div>
-</div>
-<!-- breadcrumb -->
-@endsection
 @section('content')
+    <x-ui.page-header title="الأطباء" description="استعراض فريق الأطباء وحالة الدوام والتخصصات.">
+        <a href="{{ route('doctors.create') }}" class="hn-btn hn-btn-primary"><i class="fe fe-plus"></i> إضافة طبيب</a>
+    </x-ui.page-header>
 
-    @if (session('success'))
-        <div class="alert alert-outline-success" role="alert">
-            <button aria-label="Close" class="close" data-dismiss="alert" type="button">
-                <span aria-hidden="true">&times;</span></button>
-            <strong>Well done!</strong> {{ session('success') }}.
+    <x-ui.flash />
+
+    <section class="hn-panel">
+        <div class="hn-panel-header">
+            <div><h2 class="hn-panel-title">فريق الأطباء</h2><p class="hn-panel-subtitle">{{ number_format(method_exists($doctor, 'total') ? $doctor->total() : $doctor->count()) }} طبيبًا مسجلًا</p></div>
         </div>
-    @endif
-    @if (session('error'))
-        <div class="alert alert-outline-danger mg-b-0" role="alert">
-            <button aria-label="Close" class="close" data-dismiss="alert" type="button">
-                <span aria-hidden="true">&times;</span></button>
-            <strong>Oh snap!</strong> {{ session('error') }}.
-        </div>
-    @endif
-
-<!-- row -->
-<div class="row row-sm">
-    <div class="col-xl-12">
-        <div class="card">
-            <div class="card-header pb-0">
-                <div class="d-flex justify-content-between">
-                    <div class="col-lg-12 margin-tb">
-                        <div class="pull-right">
-
-                                <a class="btn btn-info btn-sm" href="{{ route('doctors.create',['section' => $doctors]) }}"> <i class="las la-pen"></i> اضافة طبيب </a>
-
-                        </div>
-                    </div>
-                    <br>
-                </div>
-
-            </div>
-            <div class="card-body row row-sm" style="">
-                @foreach ($doctor as $key => $value)
-                <div  class="col-xl-3 col-lg-3 col-md-12 love" style="">
-                    <div class="love1 card  ">
-                        <img class="card-img-top w-100" src="{{URL::asset('assets/img/photos/7.jpg')}}" alt="">
-                        <div class="card-body">
-                            <h4 class="card-title">
-                                <b style="    width: 136px;
-    display: inline-block;">
-                                {{ $value->getsSex() }} {{ $value->name_ar }}
-                                </b>
-                            <b class="" style="">
-                                <a href="{{ route('doctors.edit', ['doctor' => $value->id, 'section' => $value->subgrp])}}" class="btn btn-sm btn-info"
-                                   title="تعديل"><i class="las la-pen"></i></a>
-
-                                <form action="{{route('doctors.destroy', $value->id)}}"
-                                      style="display:inline" method="post"
-                                      enctype="multipart/form-data">
-                                    @csrf
-                                    @method('DELETE')
-                                    <input type="hidden" name="input" id="user_id" value="{{ $value->id }}">
-                                    <button type="submit" class="btn btn-sm btn-danger"><i
-                                            class="las la-trash"></i></button>
-                                </form>
-                            </b>
-                            </h4>
-                            <p class="card-text">
-                                <b style="font-weight: 500;display: inline-block;
-    width: 163px;">{{ $value->specialization_ar }}.</b>
-                                <a class="hoverIcon btn btn-sm" style="border-width: 1px;
-    color: #0dbd0a;
-    border-color: #23c320;
-    width: 46px;
-    border-radius: 14px;">المزيد</a>
-                            </p>
-                            <div class="card-text">
-                                <div class="row">
-                                <div class="col-xl-6 col-lg-6 static-rate text-right fs-30">
-                                    <a href="{{ route('review.create',['doctor' => $value->id,'sec'=>$doctor]) }}"
-                                       class="text-dark" aria-hidden="true">
-                                        @if($value->rateing > 0)
-                                            {{$value->rateing}}
-                                        @else
-                                            0
-                                        @endif
-
-                                    </a>
-                                    <i class="fa fa-star text-warning" aria-hidden="true"></i>
-                                </div>
-                                <div class="col-xl-6 col-lg-6 static-rate text-left fs-30">
-                                    <a class="text-dark" aria-hidden="true">{{$value->revisions_num}}</a>
-                                    <a style="margin-right: 3px;" class="text-dark" aria-hidden="true">مراجعات</a>
-                                </div>
+        <div class="hn-panel-body">
+            @if($doctor->isEmpty())
+                <x-ui.empty title="لا يوجد أطباء" description="أضف أول طبيب إلى المركز." icon="fe-briefcase" />
+            @else
+                <div class="hn-card-grid">
+                    @foreach($doctor as $item)
+                        <article class="hn-doctor-card">
+                            <div class="hn-doctor-top">
+                                <img class="hn-doctor-photo" src="{{ $item->photo ? asset('img/'.$item->photo) : asset('assets/img/faces/6.jpg') }}" alt="صورة {{ $item->name_ar }}" loading="lazy">
+                                <div class="hn-doctor-meta">
+                                    <span class="hn-badge {{ $item->act ? 'hn-badge-success' : 'hn-badge-danger' }}">{{ $item->act ? 'متاح' : 'خارج الدوام' }}</span>
+                                    <h3>د. {{ $item->name_ar }}</h3>
+                                    <p>{{ $item->specialization_ar ?: 'التخصص غير محدد' }}</p>
                                 </div>
                             </div>
-
-                        </div>
-                    </div>
-                    <div class="divClass card">
-                        <div class="card-body" style="background-color: #deeeff;    width: 254px;
-    height: 249px;">
-                            <h4 class="card-title mb-3">{{ $value->getsSex() }} {{ $value->name_ar }}</h4>
-                            <div class="media-list pb-0">
-                                <div class="media">
-                                    <div class="media-body">
-                                        <div>
-                                            <label>هاتف العمل :</label> <span class="tx-medium">{{ $value->phone_number }}</span>
-                                        </div>
-                                        <div>
-                                            <label>حالة العمل :</label> <span class="tx-medium">{{ $value->getAct() }}</span>
-                                        </div>
-                                        <div>
-                                            <label>ايميل العمل :</label> <span class="tx-medium">{{$value->user->email}}</span>
-                                        </div>
-                                        <div>
-                                            <label>تاريخ الانضمام :</label> <span class="tx-medium">{{ $value->created_at }}</span>
-                                        </div>
-                                        <div>
-                                            <label>حالته ضمن النظام :</label>
-                                            @if ($value->user->Status == 'مفعل')
-                                                <span class="label text-success" style="display: inline-block;
-    margin-right: 17px;">
-                                                <div class="dot-label bg-success ml-1"></div>{{$value->user->Status}}
-                                            </span>
-                                            @else
-                                                <span class="label text-danger" style="display: inline-block;
-    margin-right: 17px;">
-                                                <div class="dot-label bg-danger ml-1"></div>{{$value->user->Status}}
-                                            </span>
-                                            @endif
-                                        </div>
-
-                                        <div>
-                                            <label>مشهور :</label>
-                                            @if ($value->famous == 1)
-                                                <span class="label text-success" style="display: inline-block;
-    margin-right: 17px;">
-                                                <div class="dot-label bg-success ml-1"></div>{{$value->getFamous()}}
-                                            </span>
-                                            @else
-                                                <span class="label text-danger" style="display: inline-block;
-    margin-right: 17px;">
-                                                <div class="dot-label bg-danger ml-1"></div>{{$value->getFamous()}}
-                                            </span>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-
+                            <div class="hn-doctor-details">
+                                <div class="hn-doctor-detail"><small>العيادة</small><strong>{{ optional($item->gnr_m_clinics)->name_ar ?: 'غير محددة' }}</strong></div>
+                                <div class="hn-doctor-detail"><small>رقم الهاتف</small><strong>{{ $item->phone_number ?: '—' }}</strong></div>
+                                <div class="hn-doctor-detail"><small>بداية الدوام</small><strong>{{ $item->from_time ?: '—' }}</strong></div>
+                                <div class="hn-doctor-detail"><small>نهاية الدوام</small><strong>{{ $item->to_time ?: '—' }}</strong></div>
                             </div>
-                        </div>
-                    </div>
+                            <div class="hn-doctor-footer">
+                                <span class="text-muted tx-12"><i class="fe fe-star text-warning"></i> {{ number_format((float)($item->total_rate ?? 0), 1) }} · {{ $item->revisions_num ?? 0 }} مراجعة</span>
+                                <div class="hn-row-actions">
+                                    <a href="{{ route('doctors.edit', ['doctor' => $item->id, 'section' => $item->subgrp]) }}" class="hn-icon-btn" title="تعديل الطبيب" aria-label="تعديل الطبيب"><i class="fe fe-edit-2"></i></a>
+                                    <form action="{{ route('doctors.destroy', $item->id) }}" method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف الطبيب؟')">@csrf @method('DELETE')<button type="submit" class="hn-icon-btn hn-icon-btn-danger" title="حذف الطبيب" aria-label="حذف الطبيب"><i class="fe fe-trash-2"></i></button></form>
+                                </div>
+                            </div>
+                        </article>
+                    @endforeach
                 </div>
-                @endforeach
-            </div>
+                @if(method_exists($doctor, 'links'))<div class="hn-pagination px-0 pb-0 mt-3">{{ $doctor->withQueryString()->links() }}</div>@endif
+            @endif
         </div>
-    </div>
-    <!--/div-->
-</div>
-<!-- row closed -->
-</div>
-<!-- Container closed -->
-</div>
-<!-- main-content closed -->
-@endsection
-@section('js')
-<!--Internal  Notify js -->
-<script src="{{ URL::asset('assets/plugins/notify/js/notifIt.js') }}"></script>
-<script src="{{ URL::asset('assets/plugins/notify/js/notifit-custom.js') }}"></script>
+    </section>
 @endsection

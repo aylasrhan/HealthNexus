@@ -29,6 +29,7 @@ class Gnr_m_patientsController extends Controller
     }
     public function index()
     {
+        $this->authorize('viewAny', gnr_m_patients::class);
         $clinics = gnr_m_clinics::all();
         $patien = $this->patientRepository->index();
         return view('back.patients.index', compact('patien','clinics'));
@@ -39,6 +40,7 @@ class Gnr_m_patientsController extends Controller
      */
     public function create()
     {
+        $this->authorize('create', gnr_m_patients::class);
         $city = gnr_m_cities::all();
         $area = gnr_m_areas::all();
         $nationality = gnr_m_nationality::all();
@@ -51,6 +53,7 @@ class Gnr_m_patientsController extends Controller
      */
     public function store(Request $request)
     {
+        $this->authorize('create', gnr_m_patients::class);
         //dd($request);
         try {
             $this->patientRepository->store($request);
@@ -80,6 +83,7 @@ class Gnr_m_patientsController extends Controller
         $nationality = gnr_m_nationality::all();
         $roles = Role::select('id','name')->get();
         $patient = gnr_m_patients::find($id);
+        $this->authorize('update', $patient);
         $user = User::find($patient->user_id);
         $prmission =  DB::table('model_has_roles')->where('model_id', '=', $patient->user_id)->get();
 
@@ -91,6 +95,8 @@ class Gnr_m_patientsController extends Controller
      */
     public function update(Request $request, string $id)
     {
+        $patient = gnr_m_patients::findOrFail($id);
+        $this->authorize('update', $patient);
         try {
             $this->patientRepository->update($request,$id);
             return Redirect()->back()->with('success', 'Update success');
@@ -105,6 +111,8 @@ class Gnr_m_patientsController extends Controller
      */
     public function destroy(Request $request)
     {
+        $patient = gnr_m_patients::findOrFail($request->input);
+        $this->authorize('delete', $patient);
         try {
             return $this->patientRepository->destroy($request);
         } catch (\Exception $ex) {

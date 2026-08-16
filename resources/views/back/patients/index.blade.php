@@ -1,215 +1,74 @@
 @extends('layouts.master')
-@section('css')
-    <!--Internal   Notify -->
-    <link href="{{ URL::asset('assets/plugins/notify/css/notifIt.css') }}" rel="stylesheet" />
-    <link href="{{URL::asset('assets/plugins/jquery-nice-select/css/nice-select.css')}}" rel="stylesheet" />
-    <link href="{{URL::asset('assets/plugins/select2/css/select2.min.css')}}" rel="stylesheet">
-    <link href="{{URL::asset('assets/plugins/treeview/treeview-rtl.css')}}" rel="stylesheet" type="text/css" />
 
-@section('title')
-    الحجوزات
-@stop
+@section('title', 'المرضى')
 
-
-@endsection
-@section('page-header')
-<!-- breadcrumb -->
-<div class="breadcrumb-header justify-content-between">
-    <div class="my-auto">
-        <div class="d-flex">
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb breadcrumb-style2">
-                    <li class="breadcrumb-item">
-                        <a href="{{ url('/' . $page='dashboard') }}">الصفحة الرئيسية</a>
-                    </li>
-                    <li class="breadcrumb-item active">المرضى</li>
-                </ol>
-            </nav>
-        </div>
-    </div>
-</div>
-<!-- breadcrumb -->
-@endsection
 @section('content')
+    <x-ui.page-header title="المرضى" description="إدارة ملفات المرضى والوصول إلى مواعيدهم وزياراتهم الطبية.">
+        @can('create', \App\Models\back\gnr_m_patients::class)
+        <a href="{{ route('patients.create') }}" class="hn-btn hn-btn-primary"><i class="fe fe-user-plus"></i> إضافة مريض</a>
+        @endcan
+    </x-ui.page-header>
 
-    @if (session('success'))
-        <div class="alert alert-outline-success" role="alert">
-            <button aria-label="Close" class="close" data-dismiss="alert" type="button">
-                <span aria-hidden="true">&times;</span></button>
-            <strong>Well done!</strong> {{ session('success') }}.
-        </div>
-    @endif
-    @if (session('error'))
-        <div class="alert alert-outline-danger mg-b-0" role="alert">
-            <button aria-label="Close" class="close" data-dismiss="alert" type="button">
-                <span aria-hidden="true">&times;</span></button>
-            <strong>Oh snap!</strong> {{ session('error') }}.
-        </div>
-    @endif
+    <x-ui.flash />
 
-<!-- row -->
-<div class="row row-sm">
-    <div class="col-xl-12">
-        <div class="card">
-            <div class="card-header pb-0">
-                <div class="d-flex justify-content-between">
-                    <h4 class="card-title mg-b-0">STRIPED ROWS</h4>
-                    <i class="mdi mdi-dots-horizontal text-gray"></i>
-                </div>
-                <form action="{{ URL::current() }}" method="get" class="d-flex justify-content-between mb-4">
-                    <x-forms.input name="f_name" placeholder="الاسم الاول" class="mx-2" :value="request('f_name')" />
-                    <x-forms.input name="l_name" placeholder="الكنية" class="mx-2" :value="request('l_name')" />
-                    <x-forms.input name="mobile" placeholder="الموبايل" class="mx-2" :value="request('phone')" />
-                    <button class="btn btn-dark mx-2">Filter</button>
-                </form>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive border-top userlist-table">
-                    <table class="table card-table table-striped table-vcenter text-nowrap mb-0">
-                        <thead>
-                        <tr>
-                            <th class="wd-lg-8p"><span>نوع</span></th>
-                            <th class="wd-lg-8p"><span>الاسم</span></th>
-                            <th class="wd-lg-8p"><span>اسم الاب</span></th>
-                            <th class="wd-lg-8p"><span>الاسم الام</span></th>
-                            <th class="wd-lg-8p"><span>الحالة اجتماعية</span></th>
-                            <th class="wd-lg-8p"><span>الموبايل</span></th>
-                            <th class="wd-lg-8p"><span>العمر</span></th>
-                            <th class="wd-lg-8p"><span>الجنس</span></th>
-                            <th class="wd-lg-8p"><span>الهاتف</span></th>
-                            <th class="wd-lg-8p"><span>زمرة الدم</span></th>
-                            <th class="wd-lg-8p"><span>مدينة</span></th>
-                            <th class="wd-lg-8p"><span>المنطقة</span></th>
-                            <th class="wd-lg-8p"><span>القومية</span></th>
-                            <th class="wd-lg-8p"><span>العنوان</span></th>
-                            <th class="wd-lg-8p"><span>حساب محفظتي</span></th>
-                            <th class="wd-lg-8p"><span>الايميل</span></th>
-                            <th class="wd-lg-8p"><span>العمليات</span></th>
+    <section class="hn-panel">
+        <div class="hn-panel-header">
+            <div><h2 class="hn-panel-title">قائمة المرضى</h2><p class="hn-panel-subtitle">{{ number_format($patien->total()) }} ملفًا مسجلًا</p></div>
+        </div>
+        <div class="hn-panel-body border-bottom">
+            <form action="{{ route('patients.index') }}" method="GET" class="hn-filter-grid">
+                <div class="form-group mb-0"><label for="patient-first-name">الاسم الأول</label><input id="patient-first-name" class="form-control" name="f_name" value="{{ request('f_name') }}" placeholder="ابحث بالاسم"></div>
+                <div class="form-group mb-0"><label for="patient-last-name">اسم العائلة</label><input id="patient-last-name" class="form-control" name="l_name" value="{{ request('l_name') }}" placeholder="ابحث باسم العائلة"></div>
+                <div class="form-group mb-0"><label for="patient-mobile">رقم الجوال</label><input id="patient-mobile" class="form-control" name="mobile" value="{{ request('mobile') }}" inputmode="tel" placeholder="رقم الجوال"></div>
+                <div class="hn-filter-actions"><button class="hn-btn hn-btn-primary" type="submit"><i class="fe fe-search"></i> بحث</button>@if(request()->hasAny(['f_name','l_name','mobile']))<a class="hn-btn hn-btn-light" href="{{ route('patients.index') }}">مسح</a>@endif</div>
+            </form>
+        </div>
+
+        @if($patien->isEmpty())
+            <x-ui.empty title="لا توجد نتائج" description="غيّر كلمات البحث أو أضف مريضًا جديدًا." icon="fe-users" />
+        @else
+            <div class="hn-table-responsive">
+                <table class="hn-table">
+                    <thead><tr><th>المريض</th><th>التواصل</th><th>الجنس</th><th>فصيلة الدم</th><th>الموقع</th><th>الإجراءات</th></tr></thead>
+                    <tbody id="patients-list">
+                    @foreach($patien as $patient)
+                        <tr data-patient-row="{{ $patient->id }}">
+                            <td><div class="hn-person"><span class="hn-avatar">{{ mb_substr($patient->f_name ?: 'م', 0, 1) }}</span><div><strong>{{ trim($patient->f_name.' '.$patient->l_name) ?: optional($patient->user)->name }}</strong><small>{{ optional($patient->user)->email ?: 'لا يوجد بريد إلكتروني' }}</small></div></div></td>
+                            <td><strong class="d-block tx-13">{{ $patient->mobile ?: '—' }}</strong><small class="text-muted">{{ $patient->phone ?: 'لا يوجد هاتف بديل' }}</small></td>
+                            <td>{{ (string)$patient->sex === '1' ? 'ذكر' : ((string)$patient->sex === '2' ? 'أنثى' : '—') }}</td>
+                            <td><span class="hn-badge hn-badge-pending">{{ $patient->blood ?: 'غير محددة' }}</span></td>
+                            <td>{{ optional($patient->gnr_m_cities)->name ?? '—' }}<small class="d-block text-muted">{{ optional($patient->gnr_m_areas)->name ?? '' }}</small></td>
+                            <td>
+                                <div class="hn-row-actions">
+                                    @can('update', $patient)<a href="{{ route('patients.edit', $patient->id) }}" class="hn-icon-btn" title="تعديل بيانات المريض" aria-label="تعديل بيانات المريض"><i class="fe fe-edit-2"></i></a>@endcan
+                                    <a href="{{ url('patient-appointments/'.optional($patient->user)->id) }}" class="hn-icon-btn" title="مواعيد المريض" aria-label="مواعيد المريض"><i class="fe fe-calendar"></i></a>
+                                    <a href="{{ route('visits.show', $patient->id) }}" class="hn-icon-btn" title="فتح الملف الطبي والزيارات" aria-label="فتح الملف الطبي"><i class="fe fe-file-text"></i></a>
+                                    @can('delete', $patient)<form action="{{ route('patients.destroy', $patient->id) }}" method="POST" class="js-patient-delete d-inline">@csrf @method('DELETE')<input type="hidden" name="input" value="{{ $patient->id }}"><button class="hn-icon-btn hn-icon-btn-danger" type="submit" title="حذف المريض" aria-label="حذف المريض"><i class="fe fe-trash-2"></i></button></form>@endcan
+                                </div>
+                            </td>
                         </tr>
-                        </thead>
-                        <tbody id="deletePatent">
-                        @foreach ($patien as $key => $value)
-                            <tr>
-                                <td>{{$value->getTitle()}}</td>
-                                <td>{{$value->f_name}}</td>
-                                <td>{{$value->ft_name}}</td>
-                                <td>{{$value->mother_name}}</td>
-                                <td>{{$value->getMarital_status()}}</td>
-                                <td>{{$value->mobile}}</td>
-                                <td>{{$value->age()}}</td>
-                                <td>{{$value->getSex()}}</td>
-                                <td>{{$value->phone}}</td>
-                                <td>{{$value->blood}}</td>
-                                <td>{{$value->gnr_m_cities->name?? '----'}}</td>
-                                <td>{{$value->gnr_m_areas->name ?? '----'}}</td>
-                                <td>{{$value->gnr_m_nationality->name_ar?? '----'}}</td>
-                                <td>{{$value->address}}</td>
-                                <td>{{$value->digital_wallet}}</td>
-                                <td>{{$value->user->email}}</td>
-                                <td>
-                                    <a href="{{ route('wallet.edit', $value->id) }}" class="btn btn-sm btn-indigo"
-                                      title="عمليات الحساب"><i class="las la-wallet"></i></a>
-
-                                    <a href="{{ route('patients.edit', $value->id) }}" class="btn btn-sm btn-info"
-                                           title="تعديل المريض"><i class="las la-pen"></i></a>
-                                    <a href="{{ url('patient-appointments/'. $value->user->id) }}" class="btn btn-sm btn-primary"
-                                       title="الحجوزات"><i class="las la-calendar-check"></i></a>
-
-                                    <a href="{{ route('visits.show', $value->id) }}" class="btn btn-sm btn-success"
-                                       title="اظهار جميع الزيارات"><i class="las la-pen"></i></a>
-
-                                    <form action=""
-                                          style="display:inline" method="post"
-                                          enctype="multipart/form-data">
-                                        @csrf
-                                        @method('DELETE')
-                                        <input type="hidden" name="input" id="user_id" value="{{ $value->id }}">
-                                        <button type="submit" class="btn btn-sm btn-danger"><i
-                                                class="las la-trash"></i></button>
-                                    </form>
-
-                                </td>
-                            </tr>
-                        @endforeach
-                        </tbody>
-                    </table>
-                    <div style="margin-top: 30px;">
-                        {{$patien->withQueryString()->links()}}
-                    </div>
-
-                </div><!-- bd -->
-            </div><!-- bd -->
-        </div><!-- bd -->
-    </div>
-    <!--/div-->
-
-    <div class="modal" id="modaldemo8">
-        <div class="modal-dialog modal-dialog-centered" role="document">
-            <div class="modal-content modal-content-demo">
-                <div class="modal-header">
-                    <h6 class="modal-title">اضافة زيارة</h6>
-                    <button aria-label="Close" class="close"
-                            data-dismiss="modal" type="button"><span aria-hidden="true">&times;</span></button>
-                </div>
-                <form action="{{ route('visits.store') }}" method="post" enctype="multipart/form-data">
-                    @csrf
-                    @method('POST')
-                    <div class="modal-body">
-                        <p>هل تريد اضافة زيارة؟</p><br>
-                        <input type="hidden" name="user_id" id="user_id" value="">
-
-                        <x-forms.label id=""><span class="">اختر عيادة</span></x-forms.label>
-                        <select name="clinic" class="form-control select2" requiredInput="*">
-                            <option></option>
-                            @foreach ($clinics as $key => $value)
-                                <option value="{{$value->id}}"/>{{ $value->name_ar }}</option>
-                            @endforeach
-                        </select>
-
-                        <x-forms.label id=""><span class="">ادخل ملاحظة </span></x-forms.label>
-                        <input class="form-control" name="note" id="" type="text">
-                        <x-forms.input label="التكلفة: " oninvalid="this.setCustomValidity('يجب ان تدخل رقم')" onchange="this.setCustomValidity('')" inputmode="numeric" pattern="[0-9]*"  class="" name="price"  />
-
-
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-dismiss="modal">الغاء</button>
-                        <button type="submit" class="btn btn-danger">تاكيد</button>
-                    </div>
-                </form>
+                    @endforeach
+                    </tbody>
+                </table>
             </div>
-
-        </div>
-    </div>
-</div>
+            <div class="hn-pagination">{{ $patien->withQueryString()->links() }}</div>
+        @endif
+    </section>
 @endsection
-@section('js')
-    <!-- Internal Treeview js -->
-    <script src="{{URL::asset('assets/plugins/select2/js/select2.min.js')}}"></script>
-    <script src="{{URL::asset('assets/plugins/treeview/treeview.js')}}"></script>
 
-    <!--Internal  Notify js -->
-<script src="{{ URL::asset('assets/plugins/notify/js/notifIt.js') }}"></script>
-<script src="{{ URL::asset('assets/plugins/notify/js/notifit-custom.js') }}"></script>
-<!--Internal  Datatable js -->
-<script src="{{URL::asset('assets/js/table-data.js')}}"></script>
+@section('js')
 <script>
-    $('#deletePatent').on('submit','form',function(e) {
-        e.preventDefault();
-        $(this).closest("tr").remove();
-        $.ajax({
-            method:"POST",
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            },
-            url: "{{route('patients.destroy','test')}}",
-            data: $(this).serialize()
-            ,
-            success: function(data) {
-                alert(data.result);
-            },
-            error: function(xhr, status, error) {
-                console.error(xhr);}});
+document.querySelectorAll('.js-patient-delete').forEach(function (form) {
+    form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        if (!window.confirm('هل أنت متأكد من حذف ملف المريض؟')) return;
+        var button = form.querySelector('button');
+        button.disabled = true;
+        fetch(form.action, {method: 'POST', body: new FormData(form), headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'}})
+            .then(function (response) { if (!response.ok) throw new Error(); return response.json(); })
+            .then(function () { form.closest('tr').remove(); })
+            .catch(function () { window.alert('تعذر حذف المريض. يرجى المحاولة مرة أخرى.'); button.disabled = false; });
     });
+});
 </script>
 @endsection

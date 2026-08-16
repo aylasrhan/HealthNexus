@@ -12,6 +12,7 @@ use App\Traits\UploadFileTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use App\Models\back\Appointment;
 
 class PatientRepository implements IPatientRepository
 {
@@ -28,6 +29,20 @@ class PatientRepository implements IPatientRepository
     {
         $request = request();
         $query = gnr_m_patients::with('user','gnr_m_cities','gnr_m_areas','gnr_m_nationality');
+        $user = auth()->user();
+
+        if ($user->hasSystemRole('patient', 'مريض')) {
+            $query->where('user_id', $user->id);
+        } elseif ($user->hasSystemRole('doctor', 'طبيب')) {
+            $doctorId = $user->doctor?->id;
+            $patientUserIds = Appointment::query()
+                ->select('appointment_for')
+                ->whereIn('appointment_with', array_filter([$user->id, $doctorId]))
+                ->where('is_deleted', 0);
+            $query->whereIn('user_id', $patientUserIds);
+        } elseif (!$user->hasSystemRole('admin', 'super_admin', 'secretary', 'reception', 'receptionist')) {
+            $query->whereRaw('1 = 0');
+        }
 
         if ($f_name = $request->query('f_name')) {
             $query->where('f_name', 'LIKE', "%{$f_name}%");
@@ -67,7 +82,8 @@ class PatientRepository implements IPatientRepository
                     'Status'=> $request->Status,
                 ]);
 
-                $user->syncRoles($request->roles);
+                $user->syncRoles('patient');
+                $user->update(['roles_name' => ['patient']]);
                 DB::table('gnr_m_patients')->where('id', $patient)
                     ->update([
                         'f_name' => $request->f_name,
@@ -110,8 +126,9 @@ class PatientRepository implements IPatientRepository
                     'email' => $request->email,
                     'password' => Hash::make($request['password']),
                     'Status'=> $request->Status,
+                    'roles_name' => ['patient'],
                 ]);
-                $user->assignRole($request->roles);
+                $user->assignRole('patient');
 
                 $pateint = DB::insert('insert into gnr_m_patients (f_name, birth_date,ft_name,mother_name,marital_status,
                             title,mobile,phone,sex,blood,nationality,p_city,p_area,address,user_id)

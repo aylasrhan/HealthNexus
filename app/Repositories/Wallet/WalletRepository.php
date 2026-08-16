@@ -7,6 +7,7 @@ use App\Models\back\gnr_m_areas;
 use App\Models\back\gnr_m_cities;
 use App\Models\back\gnr_m_nationality;
 use App\Models\back\gnr_m_patients;
+use App\Models\back\wallet as WalletModel;
 use App\Models\User;
 use App\Repositories\Wallet\IWalletRepository;
 use App\Traits\UploadFileTrait;
@@ -27,7 +28,9 @@ class WalletRepository implements IWalletRepository
 
     public function index()
     {
-
+        return WalletModel::query()
+            ->orderByDesc('id')
+            ->paginate(20);
     }
 
 
