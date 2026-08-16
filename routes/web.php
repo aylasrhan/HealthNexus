@@ -47,8 +47,33 @@ Route::get('/register', function () {
     return view('auth.register');
 });
 
+// Route::get('/dashboard', function () {
+//     return view('dashboard');
+// })->middleware(['auth'])->name('dashboard');
 Route::get('/dashboard', function () {
-    return view('dashboard');
+    // 1. عدد مواعيد اليوم
+    $todayAppointments = \App\Models\back\Appointment::whereDate('appointment_date', \Carbon\Carbon::today())->count();
+    
+    // 2. عدد الطلبات المعلقة (التي حالتها 0)
+    $pendingAppointments = \App\Models\back\Appointment::where('status', 0)->count();
+    
+    // 3. إجمالي المرضى
+    $totalPatients = \App\Models\back\gnr_m_patients::count();
+    
+    // 4. إجمالي الزيارات / الاستشارات
+    $totalVisits = \App\Models\back\cln_x_visits::count();
+    
+    // 5. جلب أحدث 5 مواعيد لعرضها في الجدول
+    // $recentAppointments = \App\Models\back\Appointment::orderBy('id', 'desc')->take(5)->get();
+// 5. جلب أحدث 5 مواعيد مع أسماء المرضى لعرضها في الجدول
+$recentAppointments = \App\Models\back\Appointment::with('patient')->orderBy('id', 'desc')->take(5)->get();
+    return view('dashboard', compact(
+        'todayAppointments', 
+        'pendingAppointments', 
+        'totalPatients', 
+        'totalVisits', 
+        'recentAppointments'
+    ));
 })->middleware(['auth'])->name('dashboard');
 
 Route::middleware('auth')->group(callback: function () {

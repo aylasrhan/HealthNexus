@@ -17,87 +17,61 @@ class ApiVisitsController extends Controller
 
    
 
+public function add_diagnosis(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'visit_id' => 'required',
+                'patient_id' => 'required',
+                'diagnosis' => 'required|string',
+            ]);
 
-// public function pat_visits(): JsonResponse 
-// {
-//     // 1. جلب المستخدم
-//     $user = auth()->user();
-//     if (!$user) {
-//         return $this->returnError("D01", "غير مصرح لك بالدخول");
-//     }
+            $user = auth()->user();
+            if (!$user) {
+                return $this->returnError("D01", "غير مصرح لك بالدخول");
+            }
 
-//     // 2. البحث عن المريض
-//     $patient = gnr_m_patients::where('user_id', $user->id)->first();
-//     if (!$patient) {
-//         return $this->returnError("D01", "بيانات المريض غير موجودة لهذا المستخدم");
-//     }
-// // 3. جلب الزيارات مع الملاحظات (cln_x_prev_not)
-// $visits = cln_x_visits::with(['gnr_m_clinics', 'cln_x_prev_not']) // أضفنا العلاقة هنا
-//                 ->where('patient', '=', $patient->id)
-//                 ->orderBy('d_start', 'DESC')
-//                 ->get();
-//     // 3. جلب الزيارات
-//     // $visits = cln_x_visits::with('gnr_m_clinics')
-//     //             ->where('patient', '=', $patient->id)
-//     //             ->orderBy('d_start', 'DESC')
-//     //             ->get(); // تأكدي أن الفاصلة المنقوطة موجودة هنا
+            $doctorId = $user->doctor->id ?? $user->id;
+            $timestamp = time();
 
-//     // 4. تنسيق التواريخ
-//     foreach ($visits as $visit) {
-//         $visit->d_start = Carbon::createFromTimestamp($visit->d_start)->format('Y-m-d \الساعة: h:i A');
-//     }
+            // 🔴 التعديل السحري: جلب الـ ID الحقيقي للمريض ليتوافق مع الجداول
+            $realPatient = \App\Models\back\gnr_m_patients::where('id', $request->patient_id)
+                ->orWhere('user_id', $request->patient_id)
+                ->first();
+            
+            // إذا وجد المريض نأخذ الـ id الأساسي، وإلا نستخدم الرقم القادم من فلاتر
+            $actualPatientId = $realPatient ? $realPatient->id : $request->patient_id;
 
-//     // 5. إرجاع البيانات
-//     return $this->returnData("visits", $visits, "تم جلب البيانات بنجاح");
-// }
-// لحد 29
-// public function pat_visits(): JsonResponse 
-// {
-//     // 1. جلب المستخدم
-//     $user = auth()->user();
-//     if (!$user) {
-//         return $this->returnError("D01", "غير مصرح لك بالدخول");
-//     }
+            \DB::beginTransaction();
 
-//     // 2. البحث عن المريض
-//     $patient = gnr_m_patients::where('user_id', $user->id)->first();
-//     if (!$patient) {
-//         return $this->returnError("D01", "بيانات المريض غير موجودة لهذا المستخدم");
-//     }
+            if ($request->filled('complaint')) {
+                \DB::table('cln_x_prev_com')->insert([
+                    'visit' => $request->visit_id,
+                    'patient' => $actualPatientId, // 🔴 الحفظ بالرقم الحقيقي
+                    'doc' => $doctorId,
+                    'val' => $request->complaint,
+                    'date' => $timestamp
+                ]);
+            }
 
-//     \Log::info("جاري جلب مواعيد المستخدم ID: " . $patient->id);
-// // 3. جلب الزيارات
-// $visits = cln_x_visits::with(['gnr_m_clinics', 'cln_x_prev_not', 'cln_x_prev_dia'])
-//                   ->where('patient', '=', $patient->id)
-//                   ->orderBy('d_start', 'DESC')
-//                   ->get()
-//                   ->unique('clinic')
-//                   ->values(); // هذه الإضافة هي الحل: تعيد ترتيب المفاتيح لتكون [0, 1, 2...]
-// //     // 3. جلب الزيارات مع كافة العلاقات المطلوبة
-// //     $visits = cln_x_visits::with(['gnr_m_clinics', 'cln_x_prev_not', 'cln_x_prev_dia'])
-// //                   ->where('patient', '=', $patient->id)
-// //                   ->orderBy('d_start', 'DESC')
-// //                   ->get();
-                  
-// // $visits = $allVisits->unique('clinic');
-//     \Log::info("عدد الزيارات التي تم جلبها: " . $visits->count());
+            \DB::table('cln_x_prev_dia')->insert([
+                'visit' => $request->visit_id,
+                'patient' => $actualPatientId, // 🔴 الحفظ بالرقم الحقيقي
+                'doc' => $doctorId,
+                'val' => $request->diagnosis,
+                'date' => $timestamp
+            ]);
 
-//     // 4. تنسيق التواريخ والتحقق من وجود ملاحظات
-//     foreach ($visits as $visit) {
-//         // التحقق من وجود ملاحظات للزيارة في الـ Log
-//         \Log::info("زيارة ID: " . $visit->id . " لديها ملاحظات عدد: " . $visit->cln_x_prev_not->count());
+            \DB::commit();
+            return $this->returnSuccess("تم إضافة التشخيص والشكاية بنجاح");
 
-//         if ($visit->d_start) {
-//              $visit->d_start = Carbon::parse($visit->d_start)->format('Y-m-d \الساعة: h:i A');
-//         }
-//     }
+        } catch (\Exception $ex) {
+            \DB::rollBack();
+            return $this->returnError("E500", "حدث خطأ أثناء الحفظ: " . $ex->getMessage());
+        }
+    }
 
-//     // 5. إرجاع البيانات
-//     return response()->json([
-//         "success" => true,
-//         "visits" => $visits
-//     ]);
-// }
+
 public function pat_visits(): JsonResponse 
 {
     // 1. جلب المستخدم
