@@ -44,6 +44,8 @@ Route::middleware('auth:api')->group(function () {
 Route::middleware('auth:api')->group(function () {
     Route::get('departments', [ApiPatientController::class, 'departments']);
     // Route::get('famous_doctors', [ApiPatientController::class, 'famous_doctors']);
+    Route::post('add-diagnosis', [ApiVisitsController::class, 'add_diagnosis']);
+    Route::get('patient/profile', [ApiPatientController::class, 'patientProfile']);
     Route::post('doctors_by_department', [ApiDoctorController::class, 'dep_doctor']);
     Route::post('search', [ApiDoctorController::class, 'search']);
     Route::post('review', [ApiDoctorController::class, 'review']);
@@ -72,7 +74,6 @@ Route::middleware('auth:api')->group(function () {
     Route::post('answer', [ApiQuestionController::class, 'answer']);
 
     #############################################################################################
-// اضافة من عندي
 
 });
 

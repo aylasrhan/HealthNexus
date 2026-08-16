@@ -58,8 +58,59 @@ class ApiPatientController extends Controller
             return $this->returnData("areas", $areas, "", "D00");
         }
     }
+public function patientProfile(Request $request): JsonResponse
+{
+    try {
+        $patientId = $request->patient_id;
 
+        if (!$patientId) {
+            return $this->returnError("P00", "رقم المريض مطلوب");
+        }
 
+        // ملاحظة: استخدمنا المسار الكامل للموديل هنا عشان ما تضطري تعملي import فوق وتصير خربطة
+        // رح نبحث عن المريض إما عن طريق الـ id الأساسي أو عن طريق الـ user_id
+        $patient = \App\Models\back\gnr_m_patients::with([
+            'gnr_m_patients_medical_info',
+            'cln_m_medical_his',
+            'cln_x_prev_com',
+            'cln_x_prev_dia'
+        ])
+        ->where('id', $patientId)
+        ->orWhere('user_id', $patientId)
+        ->first();
+
+        if (!$patient) {
+            return $this->returnError("P01", "المريض غير موجود بقاعدة البيانات");
+        }
+
+        // حساب العمر بطريقة آمنة (إذا كان تاريخ الميلاد غير موجود ما بيضرب الكود)
+        $age = "غير محدد";
+        if (!empty($patient->birth_date)) {
+            try {
+                $age = $patient->age();
+            } catch (\Exception $e) {}
+        }
+
+        $data = [
+            'id' => $patient->id,
+            'full_name' => ($patient->f_name ?? '') . ' ' . ($patient->l_name ?? ''),
+            'age' => $age,
+            'sex' => $patient->sex == 1 ? 'ذكر' : 'أنثى',
+            'blood' => $patient->blood ?? 'غير متوفرة',
+            'mobile' => $patient->mobile ?? 'لا يوجد',
+            'medical_info' => $patient->gnr_m_patients_medical_info,
+            'medical_history' => $patient->cln_m_medical_his,
+            'complaints' => $patient->cln_x_prev_com,
+            'diagnoses' => $patient->cln_x_prev_dia,
+        ];
+
+        return $this->returnData("patient_profile", $data, "تم جلب البيانات بنجاح", "D00");
+
+    } catch (\Exception $ex) {
+        // إذا ضرب أي خطأ، رح يرجعلك السيرفر سبب الخطأ الحقيقي بدل شاشة 500
+        return $this->returnError("E500", "خطأ في السيرفر: " . $ex->getMessage());
+    }
+}
 // public function famous_doctors(): JsonResponse
 // {
 //     $famous_doctors = $this->DoctorRepository->getFamousDoctors();

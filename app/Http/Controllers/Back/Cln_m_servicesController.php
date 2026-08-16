@@ -49,17 +49,22 @@ public function getDateLastMounth(){
  $start ="2020-07-01 00:00:00";
                 $end = "2020-07-30 11:59:00";
  * */
-    public function index()
+     
+
+
+
+
+
+
+
+public function index()
     {
-
-
-
         $allvisit = DB::table('cln_x_visits')
             ->join('cln_x_prev_com', function (JoinClause $join) {
                 //not
                 $request = request();
                 $user = User::find(Auth::id());
-                $doctor = $user->doctor->id;
+                $doctor = $user->doctor->id ?? 0; // أضفت حماية بسيطة في حال لم يكن المستخدم طبيباً
 
                 $time = $this->getDateLastMounth();
                 $start =$time[0];
@@ -71,49 +76,17 @@ public function getDateLastMounth(){
                     ->where('cln_x_prev_com.doc', '=', $doctor)
                     ->whereBetween('cln_x_visits.d_start', [$result[0],$result[1]]);
 
-
             })
-            ->selectRaw('cln_x_visits.id,DATE_FORMAT(FROM_UNIXTIME(cln_x_visits.d_start), "%Y-%m-%d") AS date
-            ,cln_x_visits.patient,cln_x_visits.clinic,cln_x_visits.note,cln_x_visits.price')
+            ->selectRaw('cln_x_visits.id, DATE_FORMAT(FROM_UNIXTIME(cln_x_visits.d_start), "%Y-%m-%d") AS date, cln_x_visits.patient, cln_x_visits.clinic, cln_x_visits.note')
             ->distinct('cln_x_visits.id')
-
             ->get();
 
+        // قمنا بحذف الـ dd 
+        // dd($allvisit); 
 
-dd($allvisit);
-        //dd($allvisit->sum('price'));
-       // var_dump($allvisit, DB::getQueryLog());
-       /* $stack = array();
-        for ($i = 1; $i<3;$i++){
-            DB::insert('insert into cln_x_visits_services (visit_id ,clinic,service,status,patient ,d_start ,srv_type)
-             values (?, ?,?,?,?,?,?)', [1462090, 25,2232, "0",2120353, '0', '0']);
-            $val = cln_x_visits_services::pluck('id')->last();
-            array_push($stack,$val);
-        }
-
-
-        dd($stack);*/
-        /*
-        $inputArray = [0,1];
-
-        $doctor = DB::table('doctors')->select('id')->get();
-        foreach ($doctor as $f){
-            DB::insert('insert into expert_available_days (expert_id,sun,mon,tue,wen,thu,fri,sat)
-                values (?,?,?,?,?,?,?,?)', [
-                $f->id,
-                Arr::random($inputArray),
-                Arr::random($inputArray),
-                Arr::random($inputArray),
-                Arr::random($inputArray),
-                Arr::random($inputArray),
-                Arr::random($inputArray),
-                Arr::random($inputArray)
-            ]);
-
-        }*/
-        /* dd(doctors::with('user','gnr_m_clinics')
-             ->where('famous' ,'=',0)->get());*/
-
+        // إرجاع واجهة التصميم مع تمرير البيانات
+        // ملاحظة: تأكدي من مسار ملف الـ view إذا كان مختلفاً لديك
+        return view('back.services.index', compact('allvisit')); 
     }
 
     /**
