@@ -1,6 +1,7 @@
 @extends('layouts.master')
+
 @section('css')
-    <link href="{{URL::asset('assets/plugins/owl-carousel/owl.carousel.css')}}" rel="stylesheet"/>
+    <link href="{{ URL::asset('assets/plugins/owl-carousel/owl.carousel.css') }}" rel="stylesheet"/>
 @endsection
 
 @section('page-header')
@@ -11,35 +12,16 @@
                 <p class="mg-b-0">لوحة التحكم الخاصة بإدارة العيادة والمواعيد (WeCare).</p>
             </div>
         </div>
+        <div class="hn-actions">
+            <a href="{{ route('patients.create') }}" class="hn-btn hn-btn-light"><i class="fe fe-user-plus"></i> مريض جديد</a>
+            <a href="{{ route('patients.index') }}" class="hn-btn hn-btn-primary"><i class="fe fe-calendar"></i> اختيار مريض للحجز</a>
+        </div>
     </div>
 @endsection
-
 
 @section('title', 'لوحة التحكم')
 
 @section('content')
-    <div class="row row-sm">
-        <!-- 1. مواعيد اليوم -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-xm-12">
-            <div class="card overflow-hidden sales-card bg-primary-gradient">
-                <div class="pl-3 pt-3 pr-3 pb-2 pt-0">
-                    <div class="">
-                        <h6 class="mb-3 tx-12 text-white">مواعيد اليوم</h6>
-                    </div>
-                    <div class="pb-0 mt-0">
-                        <div class="d-flex">
-                            <div class="">
-                                <!-- وضع المتغير الحقيقي هنا -->
-                                <h4 class="tx-20 font-weight-bold mb-1 text-white">{{ $todayAppointments }} موعد</h4>
-                                <p class="mb-0 tx-12 text-white op-7">يوجد مواعيد قادمة اليوم</p>
-                            </div>
-                            <span class="float-right my-auto mr-auto">
-                                <i class="fas fa-calendar-day text-white tx-30"></i>
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
     @php
         $maxTrend = max(1, $trend->max('value'));
         $statusLabels = [0 => ['قيد الانتظار', 'pending'], 1 => ['مؤكد', 'success'], 2 => ['ملغي', 'danger']];
@@ -49,78 +31,6 @@
         <div>
             <h1>مرحبًا، {{ $user->name }}</h1>
             <p>إليك ملخص العمل وأهم الأنشطة في المركز الصحي اليوم.</p>
-        </div>
-        
-        <!-- 2. طلبات معلقة -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-xm-12">
-            <div class="card overflow-hidden sales-card bg-warning-gradient">
-                <div class="pl-3 pt-3 pr-3 pb-2 pt-0">
-                    <div class="">
-                        <h6 class="mb-3 tx-12 text-white">طلبات معلقة</h6>
-                    </div>
-                    <div class="pb-0 mt-0">
-                        <div class="d-flex">
-                            <div class="">
-                                <!-- وضع المتغير الحقيقي هنا -->
-                                <h4 class="tx-20 font-weight-bold mb-1 text-white">{{ $pendingAppointments }} طلبات</h4>
-                                <p class="mb-0 tx-12 text-white op-7">بانتظار التأكيد أو الرفض</p>
-                            </div>
-                            <span class="float-right my-auto mr-auto">
-                                <i class="fas fa-clock text-white tx-30"></i>
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 3. إجمالي المرضى -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-xm-12">
-            <div class="card overflow-hidden sales-card bg-success-gradient">
-                <div class="pl-3 pt-3 pr-3 pb-2 pt-0">
-                    <div class="">
-                        <h6 class="mb-3 tx-12 text-white">إجمالي المرضى</h6>
-                    </div>
-                    <div class="pb-0 mt-0">
-                        <div class="d-flex">
-                            <div class="">
-                                <!-- وضع المتغير الحقيقي هنا -->
-                                <h4 class="tx-20 font-weight-bold mb-1 text-white">{{ $totalPatients }} مريض</h4>
-                                <p class="mb-0 tx-12 text-white op-7">تم تسجيلهم في العيادة</p>
-                            </div>
-                            <span class="float-right my-auto mr-auto">
-                                <i class="fas fa-users text-white tx-30"></i>
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 4. الاستشارات المنجزة -->
-        <div class="col-xl-3 col-lg-6 col-md-6 col-xm-12">
-            <div class="card overflow-hidden sales-card bg-danger-gradient">
-                <div class="pl-3 pt-3 pr-3 pb-2 pt-0">
-                    <div class="">
-                        <h6 class="mb-3 tx-12 text-white">الاستشارات المنجزة</h6>
-                    </div>
-                    <div class="pb-0 mt-0">
-                        <div class="d-flex">
-                            <div class="">
-                                <!-- وضع المتغير الحقيقي هنا -->
-                                <h4 class="tx-20 font-weight-bold mb-1 text-white">{{ $totalVisits }} استشارة</h4>
-                                <p class="mb-0 tx-12 text-white op-7">منذ افتتاح العيادة</p>
-                            </div>
-                            <span class="float-right my-auto mr-auto">
-                                <i class="fas fa-stethoscope text-white tx-30"></i>
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        <div class="hn-actions">
-            <a href="{{ route('patients.create') }}" class="hn-btn hn-btn-light"><i class="fe fe-user-plus"></i> مريض جديد</a>
-            <a href="{{ route('patients.index') }}" class="hn-btn hn-btn-primary"><i class="fe fe-calendar"></i> اختيار مريض للحجز</a>
         </div>
     </div>
 
