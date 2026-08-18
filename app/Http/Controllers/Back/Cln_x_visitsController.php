@@ -35,53 +35,106 @@ class Cln_x_visitsController extends Controller
      $start ="2020-07-01 00:00:00";
                     $end = "2020-07-30 11:59:00";
      * */
-    public function index()
-    {
-        $this->authorize('viewAny', cln_x_visits::class);
-        $visits = DB::table('cln_x_visits')
-            ->join('cln_x_prev_com', function (JoinClause $join) {
-                //not
-                $request = request();
-                $user = User::find(Auth::id());
-                $doctor = $user->doctor->id;
-               if ($request->mounth == null && $request->day == null && ($request->between1 ==null || $request->between2 == null)){
-                   $time = $this->getDateLastMounth();
-                   $start =$time[0];
-                   $end = $time[1];
-               }elseif ($request->mounth !== null){
-                   $start = $request->mounth."-01 00:00:00";
-                   $end = $request->mounth."-30 11:59:00";
-               }elseif ($request->day !== null){
-                   $start = $request->day." 00:00:00";
-                   $end = $request->day." 16:59:00";
-               }elseif ($request->between1 !== null && $request->between2 !== null){
-                   $start = $request->between1;
-                   $end = $request->between2;
-               }
+    // public function index()
+    // {
+    //     $this->authorize('viewAny', cln_x_visits::class);
+    //     $visits = DB::table('cln_x_visits')
+    //         ->join('cln_x_prev_com', function (JoinClause $join) {
+    //             //not
+    //             $request = request();
+    //             $user = User::find(Auth::id());
+    //             $doctor = $user->doctor->id;
+    //            if ($request->mounth == null && $request->day == null && ($request->between1 ==null || $request->between2 == null)){
+    //                $time = $this->getDateLastMounth();
+    //                $start =$time[0];
+    //                $end = $time[1];
+    //            }elseif ($request->mounth !== null){
+    //                $start = $request->mounth."-01 00:00:00";
+    //                $end = $request->mounth."-30 11:59:00";
+    //            }elseif ($request->day !== null){
+    //                $start = $request->day." 00:00:00";
+    //                $end = $request->day." 16:59:00";
+    //            }elseif ($request->between1 !== null && $request->between2 !== null){
+    //                $start = $request->between1;
+    //                $end = $request->between2;
+    //            }
 
 
-                $result = $this->getDateASNmber($start,$end);
-                //not
-                $join->on('cln_x_visits.id', '=', 'cln_x_prev_com.visit')
-                    ->where('cln_x_prev_com.doc', '=', $doctor)
-                    ->whereBetween('cln_x_visits.d_start', [$result[0],$result[1]]);
+    //             $result = $this->getDateASNmber($start,$end);
+    //             //not
+    //             $join->on('cln_x_visits.id', '=', 'cln_x_prev_com.visit')
+    //                 ->where('cln_x_prev_com.doc', '=', $doctor)
+    //                 ->whereBetween('cln_x_visits.d_start', [$result[0],$result[1]]);
 
 
-            })
-            ->join('gnr_m_patients', function (JoinClause $join){
-                $join->on('gnr_m_patients.id', '=', 'cln_x_visits.patient');
-            })
-            ->selectRaw('cln_x_visits.id,DATE_FORMAT(FROM_UNIXTIME(cln_x_visits.d_start), "%Y-%m-%d") AS date
-            ,gnr_m_patients.f_name,cln_x_visits.clinic,cln_x_visits.note'.(Schema::hasColumn('cln_x_visits', 'price') ? ',cln_x_visits.price' : ''))
-            ->distinct('cln_x_visits.id')
+    //         })
+    //         ->join('gnr_m_patients', function (JoinClause $join){
+    //             $join->on('gnr_m_patients.id', '=', 'cln_x_visits.patient');
+    //         })
+    //         ->selectRaw('cln_x_visits.id,DATE_FORMAT(FROM_UNIXTIME(cln_x_visits.d_start), "%Y-%m-%d") AS date
+    //         ,gnr_m_patients.f_name,cln_x_visits.clinic,cln_x_visits.note'.(Schema::hasColumn('cln_x_visits', 'price') ? ',cln_x_visits.price' : ''))
+    //         ->distinct('cln_x_visits.id')
 
-            ->paginate(30);
+    //         ->paginate(30);
 
-        $price = Schema::hasColumn('cln_x_visits', 'price') ? $visits->sum('price') : null;
+    //     $price = Schema::hasColumn('cln_x_visits', 'price') ? $visits->sum('price') : null;
 
-        return view('back.visits.show', compact('visits','price'));
+    //     return view('back.visits.show', compact('visits','price'));
+    // }
+
+    public function index(Request $request)
+{
+    $this->authorize('viewAny', cln_x_visits::class);
+    
+    $user = User::find(Auth::id());
+    $doctorId = optional($user->doctor)->id;
+
+    $query = DB::table('cln_x_visits')
+        ->join('gnr_m_patients', 'gnr_m_patients.id', '=', 'cln_x_visits.patient');
+
+    if ($doctorId) {
+        $query->join('cln_x_prev_com', 'cln_x_visits.id', '=', 'cln_x_prev_com.visit')
+              ->where('cln_x_prev_com.doc', '=', $doctorId);
     }
 
+    // تطبيق الفلاتر الزمنية بناءً على حقل d_start
+    if ($request->filled('mounth')) {
+        $monthStr = $request->mounth;
+        $start = Carbon::parse($monthStr . '-01 00:00:00')->timestamp;
+        $end = Carbon::parse($monthStr . '-01 00:00:00')->endOfMonth()->timestamp;
+        $query->whereBetween('cln_x_visits.d_start', [$start, $end]);
+    } elseif ($request->filled('day')) {
+        $start = Carbon::parse($request->day)->startOfDay()->timestamp;
+        $end = Carbon::parse($request->day)->endOfDay()->timestamp;
+        $query->whereBetween('cln_x_visits.d_start', [$start, $end]);
+    } elseif ($request->filled('between1') && $request->filled('between2')) {
+        $start = Carbon::parse($request->between1)->startOfDay()->timestamp;
+        $end = Carbon::parse($request->between2)->endOfDay()->timestamp;
+        $query->whereBetween('cln_x_visits.d_start', [$start, $end]);
+    } else {
+        $time = $this->getDateLastMounth();
+        $start = Carbon::parse($time[0])->startOfDay()->timestamp;
+        $end = Carbon::parse($time[1])->endOfDay()->timestamp;
+        $query->whereBetween('cln_x_visits.d_start', [$start, $end]);
+    }
+
+    $visitsQuery = clone $query;
+
+   $visits = $query->select(
+        'cln_x_visits.id',
+        DB::raw('DATE_FORMAT(FROM_UNIXTIME(cln_x_visits.d_start), "%Y-%m-%d") AS date'),
+        'gnr_m_patients.f_name',
+        'cln_x_visits.clinic',
+        'cln_x_visits.note',
+        DB::raw(Schema::hasColumn('cln_x_visits', 'price') ? 'cln_x_visits.price AS price' : '0 AS price')
+    )
+    ->distinct('cln_x_visits.id')
+    ->paginate(30);
+
+    $price = Schema::hasColumn('cln_x_visits', 'price') ? $visitsQuery->sum('cln_x_visits.price') : null;
+
+    return view('back.visits.show', compact('visits', 'price'));
+}
 
     public function show($patient)
     {
