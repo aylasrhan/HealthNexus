@@ -25,7 +25,20 @@
                         </button>
                         <div id="question-{{ $question->id }}" class="collapse" data-parent="#questions-accordion"><div class="hn-faq-answer">
                             @if($question->answer)<p>{{ $question->answer }}</p>@else<span class="hn-badge hn-badge-pending">بانتظار الإجابة</span>@endif
-                            @can('update', $question)<div class="hn-row-actions mt-3"><a href="{{ route('questions.edit', $question->id) }}" class="hn-btn hn-btn-primary"><i class="fe fe-edit-2"></i> {{ $question->answer ? 'تعديل الإجابة' : 'إجابة السؤال' }}</a></div>@endcan
+                          @can('update', $question)
+    <!-- نموذج الرد المباشر من نفس الصفحة -->
+    <form action="{{ route('questions.reply', $question->id) }}" method="POST" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+        @csrf
+        <div class="form-group">
+            <label style="font-weight: bold; color: #0056b3; margin-bottom:8px; display:block;">رد الطبيب:</label>
+            <textarea name="answer" class="form-control" rows="3" placeholder="اكتب ردك هنا للمريض..." required>{{ $question->answer }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary mt-2" style="background-color: #0056b3; color: white; border: none; padding: 6px 16px; border-radius: 4px;">
+            <i class="fe fe-send"></i> {{ $question->answer ? 'تعديل الإجابة' : 'إرسال الرد' }}
+        </button>
+    </form>
+@endcan
+                            <!-- @can('update', $question)<div class="hn-row-actions mt-3"><a href="{{ route('questions.edit', $question->id) }}" class="hn-btn hn-btn-primary"><i class="fe fe-edit-2"></i> {{ $question->answer ? 'تعديل الإجابة' : 'إجابة السؤال' }}</a></div>@endcan -->
                         </div></div>
                     </article>
                 @endforeach
