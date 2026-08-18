@@ -131,7 +131,7 @@ Route::middleware('auth')->group(callback: function () {
     Route::resource('questions', QuestionsController::class);
     Route::get('/questions/{section}/answer', [QuestionsController::class,'answerTheQ'])->name("questions.answer");
     Route::get('/questions/user/{user}', [QuestionsController::class,'userQuestions'])->name("questions.user");
-
+    Route::post('/questions/{id}/reply', [QuestionsController::class, 'replyToQuestion'])->name('questions.reply');
 ###################################### Appointment Routes ######################################################
     Route::get('appointments', [AppointmentController::class, 'index']);
     Route::post('appointment-status/{id}', [AppointmentController::class, 'appointment_status']);

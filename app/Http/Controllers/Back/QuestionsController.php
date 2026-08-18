@@ -118,4 +118,18 @@ class QuestionsController extends Controller
 
         }
     }
+    public function replyToQuestion(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'answer' => ['required', 'string', 'max:5000'],
+        ]);
+
+        // تحديث حقل answer في جدول question
+        \Illuminate\Support\Facades\DB::table('question')->where('id', $id)->update([
+            'answer' => $validated['answer'],
+            'updated_at' => now(),
+        ]);
+
+        return back()->with('success', 'تم إرسال الرد للمريض بنجاح.');
+    }
 }
