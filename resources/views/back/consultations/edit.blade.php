@@ -63,7 +63,7 @@
             <div class="hn-panel-header"><div><h2 class="hn-panel-title"><span class="hn-step">3</span> العلامات الحيوية</h2><p class="hn-panel-subtitle">آخر قياسات مسجلة أثناء هذه الزيارة.</p></div></div>
             <div class="hn-panel-body hn-form-grid">
                 @foreach(['temperature'=>'الحرارة °C','systolic_pressure'=>'الضغط الانقباضي','diastolic_pressure'=>'الضغط الانبساطي','pulse'=>'النبض/دقيقة','respiratory_rate'=>'التنفس/دقيقة','oxygen_saturation'=>'الأكسجة %','weight'=>'الوزن كغ','height'=>'الطول سم','blood_sugar'=>'سكر الدم mg/dL'] as $field => $label)
-                    <div class="form-group"><label for="vital_{{ $field }}">{{ $label }}</label><input id="vital_{{ $field }}" type="number" step="0.1" name="vitals[{{ $field }}]" class="form-control" value="{{ old('vitals.'.$field, optional($vitals)->{$field}) }}"></div>
+                    <div class="form-group"><label for="vital_{{ $field }}">{{ $label }}</label><input id="vital_{{ $field }}" type="number" step="any" name="vitals[{{ $field }}]" class="form-control" value="{{ old('vitals.'.$field, optional($vitals)->{$field}) }}"></div>
                 @endforeach
                 <div class="form-group"><label>مؤشر كتلة الجسم BMI</label><input class="form-control" value="{{ optional($vitals)->bmi ?: 'يُحسب تلقائيًا' }}" disabled></div>
             </div>
