@@ -148,6 +148,9 @@ Route::middleware('auth')->group(callback: function () {
     Route::get('today-appointment', [AppointmentController::class, 'today_appointment']);
     Route::get('patient-appointments/{id}', [AppointmentController::class, 'patient_appointments']);
     Route::post('filter_App', [AppointmentController::class, 'filter']);
+    Route::get('/video-call/{appointment_id}', function ($appointment_id) {
+    return view('video_call', ['appointment_id' => $appointment_id]);
+})->name('doctor.video.call');
 ####################################################################################################################
 
     //zRoute::get('/user/{id}', [UserController::class, 'show']);

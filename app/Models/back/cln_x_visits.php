@@ -17,7 +17,7 @@ class cln_x_visits extends Model
     public $timestamps = false;
     protected $casts = ['completed_at' => 'datetime', 'updated_at' => 'datetime'];
 
-
+   
     public function patient()
     {
         return $this->belongsTo(gnr_m_patients::class, 'patient','id')->withDefault();

@@ -70,8 +70,6 @@ public function add_diagnosis(Request $request): JsonResponse
             return $this->returnError("E500", "حدث خطأ أثناء الحفظ: " . $ex->getMessage());
         }
     }
-
-
 public function pat_visits(): JsonResponse 
 {
     // 1. جلب المستخدم
@@ -86,16 +84,12 @@ public function pat_visits(): JsonResponse
         return $this->returnError("D01", "بيانات المريض غير موجودة لهذا المستخدم");
     }
 
-    \Log::info("جاري جلب زيارات المستخدم ID: " . $patient->id);
-
-    // 3. جلب جميع الزيارات بدون فلترة أو حذف المتكرر
-    $visits = cln_x_visits::with(['gnr_m_clinics', 'cln_x_prev_not', 'cln_x_prev_dia', 'vitals', 'issuedPrescription.items'])
-                  ->where('patient', '=', $patient->id)
-                  ->orderBy('d_start', 'DESC')
-                  ->get();
-                  
-    \Log::info("عدد الزيارات الكلي التي تم جلبها: " . $visits->count());
-
+    // 3. جلب جميع الزيارات
+    $visits = cln_x_visits::with(['gnr_m_clinics', 'cln_x_prev_not', 'cln_x_prev_dia', 'vitals', 'issuedPrescription.items','invoice.items'])
+                ->where('patient', '=', $patient->id)
+                ->orderBy('d_start', 'DESC')
+                ->get();
+                
     // 4. تنسيق التواريخ
     foreach ($visits as $visit) {
         if ($visit->d_start) {
@@ -109,4 +103,42 @@ public function pat_visits(): JsonResponse
         "visits" => $visits
     ]);
 }
+
+// public function pat_visits(): JsonResponse 
+// {
+//     // 1. جلب المستخدم
+//     $user = auth()->user();
+//     if (!$user) {
+//         return $this->returnError("D01", "غير مصرح لك بالدخول");
+//     }
+
+//     // 2. البحث عن المريض
+//     $patient = gnr_m_patients::where('user_id', $user->id)->first();
+//     if (!$patient) {
+//         return $this->returnError("D01", "بيانات المريض غير موجودة لهذا المستخدم");
+//     }
+
+//     \Log::info("جاري جلب زيارات المستخدم ID: " . $patient->id);
+
+//     // 3. جلب جميع الزيارات بدون فلترة أو حذف المتكرر
+//     $visits = cln_x_visits::with(['gnr_m_clinics', 'cln_x_prev_not', 'cln_x_prev_dia', 'vitals', 'issuedPrescription.items'])
+//                   ->where('patient', '=', $patient->id)
+//                   ->orderBy('d_start', 'DESC')
+//                   ->get();
+                  
+//     \Log::info("عدد الزيارات الكلي التي تم جلبها: " . $visits->count());
+
+//     // 4. تنسيق التواريخ
+//     foreach ($visits as $visit) {
+//         if ($visit->d_start) {
+//              $visit->d_start = Carbon::createFromTimestamp((int) $visit->d_start)->format('Y-m-d \الساعة: h:i A');
+//         }
+//     }
+
+//     // 5. إرجاع البيانات كامِلة
+//     return response()->json([
+//         "success" => true,
+//         "visits" => $visits
+//     ]);
+// }
 }

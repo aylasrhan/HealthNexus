@@ -117,8 +117,10 @@ class Medical_fileController extends Controller
         return response()->json(['results' => $rows->map(fn ($row) => ['id' => $row->id, 'text' => $row->name_ar])]);
     }
 
+
     public function saveConsultation(Request $request, cln_x_visits $visit)
     {
+    
         $this->authorize('writeMedicalFile', $visit);
         abort_if((int) $visit->status === VisitStatus::Completed->value, 409, 'المعاينة مكتملة. يجب إعادة فتحها قبل التعديل.');
 
@@ -183,14 +185,39 @@ class Medical_fileController extends Controller
                 }
             }
 
+            // DB::table('cln_x_prev_icd10')->where('visit', $visit->id)->where('doc', $doctorId)->delete();
+            // foreach (array_unique($validated['diagnoses'] ?? []) as $diagnosisId) {
+            //     DB::table('cln_x_prev_icd10')->insert([
+            //         'visit' => $visit->id,
+            //         'patient' => $visit->patient,
+            //         'opr_id' => $diagnosisId,
+            //         'doc' => $doctorId,
+            //     ]);
+            // }
             DB::table('cln_x_prev_icd10')->where('visit', $visit->id)->where('doc', $doctorId)->delete();
+            DB::table('cln_x_prev_dia')->where('visit', $visit->id)->where('doc', $doctorId)->delete();
+
             foreach (array_unique($validated['diagnoses'] ?? []) as $diagnosisId) {
+                // 1. الحفظ في جدول الويب الأساسي
                 DB::table('cln_x_prev_icd10')->insert([
                     'visit' => $visit->id,
                     'patient' => $visit->patient,
                     'opr_id' => $diagnosisId,
                     'doc' => $doctorId,
                 ]);
+
+                // 2. مزامنة النص مباشرة في جدول الموبايل cln_x_prev_dia لكي يراه المريض فوراً
+                $diagRecord = DB::table('cln_m_icd10')->where('id', $diagnosisId)->first();
+                if ($diagRecord) {
+                    $valText = trim($diagRecord->code . ' — ' . $diagRecord->name_ar);
+                    DB::table('cln_x_prev_dia')->insert([
+                        'visit' => $visit->id,
+                        'patient' => $visit->patient,
+                        'doc' => $doctorId,
+                        'val' => $valText,
+                        'date' => time(),
+                    ]);
+                }
             }
 
             DB::table('cln_x_medical_his')->where('patient', $visit->patient)->delete();

@@ -47,7 +47,14 @@
                             <td><div class="hn-row-actions">
                                 @if($role === 'doctor' && (int)$appointment->status === 1)
                                     <a class="hn-icon-btn hn-icon-btn-primary" href="{{ route('consultations.start', $appointment) }}" title="بدء أو متابعة المعاينة" aria-label="بدء أو متابعة المعاينة"><i class="fe fe-clipboard"></i></a>
-                                @endif
+                                    <a href="{{ route('doctor.video.call', $appointment->id) }}" 
+           target="_blank" 
+           class="hn-icon-btn hn-icon-btn-info" 
+           title="بدء مكالمة الفيديو" 
+           aria-label="بدء مكالمة الفيديو">
+           <i class="fe fe-video"></i>
+        </a>
+                                    @endif
                                 @if((int)$appointment->status === 0)<form action="{{ route('appointments.confirm', $appointment) }}" method="POST">@csrf @method('PATCH')<button class="hn-icon-btn" type="submit" title="تأكيد الموعد" aria-label="تأكيد الموعد"><i class="fe fe-check"></i></button></form>@endif
                                 @if((int)$appointment->status !== 2)<form action="{{ route('appointments.cancel', $appointment) }}" method="POST" onsubmit="return confirm('هل تريد إلغاء هذا الموعد؟')">@csrf @method('PATCH')<button class="hn-icon-btn hn-icon-btn-danger" type="submit" title="إلغاء الموعد" aria-label="إلغاء الموعد"><i class="fe fe-x"></i></button></form>@endif
                             </div></td>
