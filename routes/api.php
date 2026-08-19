@@ -12,7 +12,7 @@ use App\Http\Controllers\Front\ApiInvoiceController;
 use App\Http\Controllers\VerificationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-
+use App\Http\Controllers\Api\ReviewController; 
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -51,6 +51,7 @@ Route::middleware('auth:api')->group(function () {
     Route::post('doctors_by_department', [ApiDoctorController::class, 'dep_doctor']);
     Route::post('search', [ApiDoctorController::class, 'search']);
     Route::post('review', [ApiDoctorController::class, 'review']);
+    Route::post('/doctor/rate', [ReviewController::class, 'store']); // <====== أضيفي المسار الجديد هنا
     Route::get('visits', [ApiVisitsController::class,'pat_visits']);
     Route::get('visits/{visit}/prescription', [ApiPrescriptionController::class, 'show']);
     Route::get('visits/{visit}/prescription/pdf', [ApiPrescriptionController::class, 'pdf']);

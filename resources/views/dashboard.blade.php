@@ -70,19 +70,23 @@
             </div>
         </section>
 
-        <section class="hn-panel">
+<section class="hn-panel">
             <div class="hn-panel-header"><div><h2 class="hn-panel-title">إجراءات سريعة</h2><p class="hn-panel-subtitle">اختصارات للمهام المتكررة</p></div></div>
             <div class="hn-panel-body hn-quick-actions">
                 <a class="hn-quick-action" href="{{ route('patients.create') }}"><i class="fe fe-user-plus"></i><span><strong>تسجيل مريض</strong><small class="d-block text-muted">إنشاء ملف مريض جديد</small></span></a>
                 <a class="hn-quick-action" href="{{ route('patients.index') }}"><i class="fe fe-calendar"></i><span><strong>إنشاء موعد</strong><small class="d-block text-muted">ابدأ باختيار ملف المريض</small></span></a>
                 <a class="hn-quick-action" href="{{ route('doctors.index') }}"><i class="fe fe-search"></i><span><strong>البحث عن طبيب</strong><small class="d-block text-muted">استعراض الأطباء والدوام</small></span></a>
-                <a class="hn-quick-action" href="{{ route('report.index') }}"><i class="fe fe-bar-chart-2"></i><span><strong>فتح التقارير</strong><small class="d-block text-muted">مراجعة مؤشرات المركز</small></span></a>
                 <a class="hn-quick-action" href="{{ route('medical-files.index') }}"><i class="fe fe-file-text"></i><span><strong>الملفات الطبية</strong><small class="d-block text-muted">البحث في ملفات الزيارات</small></span></a>
-                <a class="hn-quick-action" href="{{ route('questions.index') }}"><i class="fe fe-message-circle"></i><span><strong>أسئلة المرضى</strong><small class="d-block text-muted">{{ number_format($operations['unanswered_questions']) }} دون إجابة</small></span></a>
-                <a class="hn-quick-action" href="{{ route('analytics.diseases') }}"><i class="fe fe-map"></i><span><strong>تحليل الأمراض</strong><small class="d-block text-muted">الخريطة والمؤشرات الجغرافية</small></span></a>
+                
+                {{-- الأزرار الخاصة بالإدارة العليا والتقارير تظهر لمدير النظام (super_admin) فقط --}}
                 @if($user->hasSystemRole('super_admin'))
+                    <a class="hn-quick-action" href="{{ route('report.index') }}"><i class="fe fe-bar-chart-2"></i><span><strong>فتح التقارير</strong><small class="d-block text-muted">مراجعة مؤشرات المركز</small></span></a>
+                    <a class="hn-quick-action" href="{{ route('questions.index') }}"><i class="fe fe-message-circle"></i><span><strong>أسئلة المرضى</strong><small class="d-block text-muted">{{ number_format($operations['unanswered_questions']) }} دون إجابة</small></span></a>
+                    <a class="hn-quick-action" href="{{ route('analytics.diseases') }}"><i class="fe fe-map"></i><span><strong>تحليل الأمراض</strong><small class="d-block text-muted">الخريطة والمؤشرات الجغرافية</small></span></a>
                     <a class="hn-quick-action" href="{{ route('ads.index') }}"><i class="fe fe-volume-2"></i><span><strong>إدارة الإعلانات</strong><small class="d-block text-muted">{{ number_format($operations['active_ads']) }} إعلان نشط</small></span></a>
-                    @if($featureAvailability['doctor_ratings'])<a class="hn-quick-action" href="{{ route('review.index') }}"><i class="fe fe-star"></i><span><strong>تقييمات الأطباء</strong><small class="d-block text-muted">متابعة رضا المرضى</small></span></a>@endif
+                    @if($featureAvailability['doctor_ratings'])
+                        <a class="hn-quick-action" href="{{ route('review.index') }}"><i class="fe fe-star"></i><span><strong>تقييمات الأطباء</strong><small class="d-block text-muted">متابعة رضا المرضى</small></span></a>
+                    @endif
                 @endif
             </div>
         </section>

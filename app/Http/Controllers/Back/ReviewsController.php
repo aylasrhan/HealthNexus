@@ -21,33 +21,27 @@ class ReviewsController extends Controller
     {
         $this->reviewRepository = $reviewRepository;
     }
-    public function index()
+  public function index()
     {
-        $ratingsAvailable = Schema::hasColumn('doctors', 'revisions_num')
-            && Schema::hasColumn('doctors', 'total_rate');
-
-        $doctorsQuery = doctors::query()->with(['user', 'gnr_m_clinics']);
-        $doctors = ($ratingsAvailable
-            ? $doctorsQuery->orderByDesc('revisions_num')
-            : $doctorsQuery->orderBy('name_ar'))
+        // جلب المستخدمين الذين لديهم دور طبيب
+        $doctors = \App\Models\User::role('doctor')
+            // 🔴 التعديل هنا: استخدام النقطة لربط العيادة بالطبيب
+            ->with(['doctor.gnr_m_clinics']) 
+            ->withAvg('doctorReviews', 'rating')
+            ->withCount('doctorReviews')
+            ->orderByDesc('doctor_reviews_count')
             ->paginate(20);
 
+        // إحصائيات التقييمات الحقيقية
         $summary = [
-            'doctors' => doctors::query()->count(),
-            'reviews' => $ratingsAvailable ? (int) doctors::query()->sum('revisions_num') : null,
-            'rated_doctors' => $ratingsAvailable ? doctors::query()->where('revisions_num', '>', 0)->count() : null,
+            'doctors' => \App\Models\User::role('doctor')->count(),
+            'reviews' => \App\Models\Review::count(),
+            'rated_doctors' => \App\Models\User::role('doctor')->has('doctorReviews')->count(),
         ];
 
-        return view('back.review.index', compact('doctors', 'summary', 'ratingsAvailable'));
-    }
+        $ratingsAvailable = true; 
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create(Request $request)
-    {
-        $doctor = $request['doctor'];
-        return view('back.review.create',compact('doctor'));
+        return view('back.review.index', compact('doctors', 'summary', 'ratingsAvailable'));
     }
 
     /**
