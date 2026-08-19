@@ -139,5 +139,21 @@ class User extends Authenticatable implements MustVerifyEmail
             'password.same' => 'تأكيد كلمة السر غير صحيحة',
         ];
     }
+// التقييمات التي تلقاها المستخدم (إذا كان طبيباً)
+    public function doctorReviews()
+    {
+        return $this->hasMany(Review::class, 'doctor_id');
+    }
 
+    // متوسط التقييم للطبيب
+    public function getAverageRatingAttribute()
+    {
+        return $this->doctorReviews()->avg('rating') ?? 0;
+    }
+
+    // عدد التقييمات للطبيب
+    public function getReviewsCountAttribute()
+    {
+        return $this->doctorReviews()->count();
+    }
 }
