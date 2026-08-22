@@ -9,7 +9,7 @@
         <div class="left-content">
             <div>
                 <h2 class="main-content-title tx-24 mg-b-1 mg-b-lg-1">مرحباً بك في لوحة التحكم!</h2>
-                <p class="mg-b-0">لوحة التحكم الخاصة بإدارة العيادة والمواعيد (WeCare).</p>
+                <p class="mg-b-0">لوحة التحكم الخاصة بإدارة العيادة والمواعيد في WeCare.</p>
             </div>
         </div>
         <div class="hn-actions">

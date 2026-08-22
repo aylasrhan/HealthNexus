@@ -30,7 +30,7 @@ class DoctorSimulationSeeder extends Seeder
 
         DB::transaction(function () use ($clinic, $doctorRole, $patientRole, $cityId, $areaId, $diagnoses) {
             $doctorUser = $this->upsertUser(
-                'demo.doctor@healthnexus.test',
+                'demo.doctor@wecare.test',
                 'د. سامر الحكيم',
                 'doctor',
                 $doctorRole
@@ -60,10 +60,10 @@ class DoctorSimulationSeeder extends Seeder
             }
 
             $patients = [
-                ['email' => 'demo.patient1@healthnexus.test', 'first' => 'ياسمين', 'last' => 'الخطيب', 'sex' => 2, 'birth' => '1998-04-12', 'mobile' => '0999000201', 'first_visit' => true],
-                ['email' => 'demo.patient2@healthnexus.test', 'first' => 'عمر', 'last' => 'العلي', 'sex' => 1, 'birth' => '1989-09-23', 'mobile' => '0999000202', 'first_visit' => true],
-                ['email' => 'demo.patient3@healthnexus.test', 'first' => 'ريم', 'last' => 'المصري', 'sex' => 2, 'birth' => '1984-02-08', 'mobile' => '0999000203', 'first_visit' => false],
-                ['email' => 'demo.patient4@healthnexus.test', 'first' => 'كنان', 'last' => 'الحموي', 'sex' => 1, 'birth' => '1977-11-17', 'mobile' => '0999000204', 'first_visit' => false],
+                ['email' => 'demo.patient1@wecare.test', 'first' => 'ياسمين', 'last' => 'الخطيب', 'sex' => 2, 'birth' => '1998-04-12', 'mobile' => '0999000201', 'first_visit' => true],
+                ['email' => 'demo.patient2@wecare.test', 'first' => 'عمر', 'last' => 'العلي', 'sex' => 1, 'birth' => '1989-09-23', 'mobile' => '0999000202', 'first_visit' => true],
+                ['email' => 'demo.patient3@wecare.test', 'first' => 'ريم', 'last' => 'المصري', 'sex' => 2, 'birth' => '1984-02-08', 'mobile' => '0999000203', 'first_visit' => false],
+                ['email' => 'demo.patient4@wecare.test', 'first' => 'كنان', 'last' => 'الحموي', 'sex' => 1, 'birth' => '1977-11-17', 'mobile' => '0999000204', 'first_visit' => false],
             ];
             $simulationStart = now()->seconds(0);
 

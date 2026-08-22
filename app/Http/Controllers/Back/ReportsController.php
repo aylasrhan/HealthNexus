@@ -80,7 +80,7 @@ class ReportsController extends Controller
                 ]);
             }
             fclose($output);
-        }, 'healthnexus-report-'.now()->format('Y-m-d-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+        }, 'wecare-report-'.now()->format('Y-m-d-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     private function validatedFilters(Request $request): array

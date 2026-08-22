@@ -24,6 +24,6 @@
         'invoices.index' => ['الفواتير', 'إدارة فواتير الزيارات والتحصيل المالي.'],
         'invoices.show' => ['تفاصيل الفاتورة', 'مراجعة البنود والمدفوعات والمبلغ المتبقي.'],
     ];
-    [$title, $description] = $titles[$routeName] ?? ['HealthNexus', 'إدارة بيانات النظام.'];
+    [$title, $description] = $titles[$routeName] ?? ['WeCare', 'إدارة بيانات النظام.'];
 @endphp
 <x-ui.page-header :title="$title" :description="$description" />

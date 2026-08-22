@@ -1,5 +1,5 @@
 <!-- Title -->
-<title>@yield('title', 'لوحة التحكم') | HealthNexus</title>
+<title>@yield('title', 'لوحة التحكم') | WeCare</title>
 <!-- Favicon -->
 <link rel="icon" href="{{URL::asset('assets/img/brand/favicon.png')}}" type="image/x-icon"/>
 <!-- Icons css -->
@@ -17,4 +17,4 @@
 <link href="{{URL::asset('assets/css-rtl/style-dark.css')}}" rel="stylesheet">
 <!---Skinmodes css-->
 <link href="{{URL::asset('assets/css-rtl/skin-modes.css')}}" rel="stylesheet">
-<link href="{{ URL::asset('assets/css/healthnexus.css') }}?v={{ filemtime(public_path('assets/css/healthnexus.css')) }}" rel="stylesheet">
+<link href="{{ URL::asset('assets/css/wecare.css') }}?v={{ filemtime(public_path('assets/css/wecare.css')) }}" rel="stylesheet">

@@ -20,13 +20,13 @@ class AdminStaffSeeder extends Seeder
         DB::transaction(function () {
             $this->upsertStaffAccount(
                 name: 'مدير النظام',
-                email: 'admin@healthnexus.test',
+                email: 'admin@wecare.test',
                 roleName: 'super_admin'
             );
 
             $this->upsertStaffAccount(
                 name: 'سكرتيرة المركز',
-                email: 'secretary@healthnexus.test',
+                email: 'secretary@wecare.test',
                 roleName: 'secretary'
             );
         });

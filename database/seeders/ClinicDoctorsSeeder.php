@@ -28,7 +28,7 @@ class ClinicDoctorsSeeder extends Seeder
             foreach ($clinics->values() as $index => $clinic) {
                 $firstName = $firstNames[$index % count($firstNames)];
                 $name = 'د. '.$firstName.' '.$lastNames[intdiv($index, count($firstNames)) % count($lastNames)];
-                $email = 'demo.doctor.clinic.'.$clinic->id.'@healthnexus.test';
+                $email = 'demo.doctor.clinic.'.$clinic->id.'@wecare.test';
                 $isFemale = in_array($firstName, ['سارة', 'نور', 'لينا', 'ريم', 'ياسمين'], true);
                 [$from, $to] = match ($index % 3) {
                     1 => ['12:00:00', '18:00:00'],
