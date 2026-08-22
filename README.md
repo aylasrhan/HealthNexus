@@ -1,4 +1,4 @@
-# HealthNexus
+# WeCare
 
 المرجع الوظيفي والتقني المحدث للمشروع متوفر في [docs/PROJECT_INVENTORY_AR.md](docs/PROJECT_INVENTORY_AR.md).
 

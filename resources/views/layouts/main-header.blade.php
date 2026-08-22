@@ -1,14 +1,14 @@
-<header class="main-header sticky side-header nav nav-item" aria-label="الشريط العلوي">
+<header class="sticky main-header side-header nav nav-item" aria-label="الشريط العلوي">
     <div class="container-fluid">
         <div class="main-header-left">
             <div class="responsive-logo">
-                <a href="{{ route('dashboard') }}" class="hn-brand"><span class="hn-brand-mark"><i class="fe fe-plus"></i></span><strong>Health<span>Nexus</span></strong></a>
+                <a href="{{ route('dashboard') }}" class="hn-brand"><span class="hn-brand-mark"><i class="fe fe-plus"></i></span><strong>We<span>Care</span></strong></a>
             </div>
             <div class="app-sidebar__toggle" data-toggle="sidebar">
                 <a class="open-toggle" href="#" aria-label="فتح القائمة"><i class="header-icon fe fe-menu"></i></a>
                 <a class="close-toggle" href="#" aria-label="إغلاق القائمة"><i class="header-icons fe fe-x"></i></a>
             </div>
-            <div class="main-header-center d-none d-lg-block mr-3">
+            <div class="mr-3 main-header-center d-none d-lg-block">
                 <span class="text-muted tx-13">{{ now()->locale('ar')->translatedFormat('l، j F Y') }}</span>
             </div>
         </div>
@@ -18,8 +18,8 @@
                     <span class="hn-avatar">{{ mb_substr(auth()->user()->name ?? 'م', 0, 1) }}</span>
                 </a>
                 <div class="dropdown-menu dropdown-menu-left">
-                    <div class="main-header-profile bg-primary p-3">
-                        <h6 class="text-white mb-1">{{ auth()->user()->name }}</h6>
+                    <div class="p-3 main-header-profile bg-primary">
+                        <h6 class="mb-1 text-white">{{ auth()->user()->name }}</h6>
                         <span class="text-white-50">{{ auth()->user()->email }}</span>
                     </div>
                     <a class="dropdown-item" href="{{ route('profile.edit') }}"><i class="bx bx-user-circle"></i> الملف الشخصي</a>
