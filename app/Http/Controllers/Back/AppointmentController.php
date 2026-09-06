@@ -41,6 +41,18 @@ class AppointmentController extends Controller
         }
     }
 
+    // public function confirm(Appointment $appointment)
+    // {
+    //     $this->authorize('accept', $appointment);
+
+    //     if ((int) $appointment->status !== 0) {
+    //         return back()->with('error', 'لا يمكن تأكيد موعد تمت معالجته مسبقًا.');
+    //     }
+
+    //     $this->AppointmentRepository->accept_appoint($appointment->id);
+
+    //     return back()->with('success', 'تم تأكيد الموعد بنجاح.');
+    // }
     public function confirm(Appointment $appointment)
     {
         $this->authorize('accept', $appointment);
@@ -48,6 +60,8 @@ class AppointmentController extends Controller
         if ((int) $appointment->status !== 0) {
             return back()->with('error', 'لا يمكن تأكيد موعد تمت معالجته مسبقًا.');
         }
+
+        $appointment->update(['status' => 1]);
 
         $this->AppointmentRepository->accept_appoint($appointment->id);
 
@@ -163,22 +177,39 @@ class AppointmentController extends Controller
             return response()->json($response);
         }
     }
-public function getPatientAppointmentsApi()
-{
-    $user = auth()->user(); // جلب المريض المسجل دخوله
+// public function getPatientAppointmentsApi()
+// {
+//     $user = auth()->user(); // جلب المريض المسجل دخوله
     
-    // جلب المواعيد مع تحميل بيانات الطبيب (Eager Loading)
-    $appointments = Appointment::with('doctor') 
-        ->where('appointment_for', $user->id)
-        ->where('status', 0) // المواعيد القادمة
-        ->orderBy('id', 'DESC')
-        ->get();
+//     // جلب المواعيد مع تحميل بيانات الطبيب (Eager Loading)
+//     $appointments = Appointment::with('doctor') 
+//         ->where('appointment_for', $user->id)
+//         ->where('status', 0) // المواعيد القادمة
+//         ->orderBy('id', 'DESC')
+//         ->get();
 
-    return response()->json([
-        'status' => 'success',
-        'upcoming_Appointment' => $appointments
-    ]);
-}
+//     return response()->json([
+//         'status' => 'success',
+//         'upcoming_Appointment' => $appointments
+//     ]);
+// }
+public function getPatientAppointmentsApi()
+    {
+        $user = auth()->user(); // جلب المريض المسجل دخوله
+        
+        // جلب المواعيد مع تحميل بيانات الطبيب (Eager Loading)
+        $appointments = Appointment::with('doctor') 
+            ->where('appointment_for', $user->id)
+            // 🔴 التعديل هنا: جلب المواعيد قيد الانتظار (0) والمؤكدة (1) لتظهر في الموبايل
+            ->whereIn('status', [0, 1]) 
+            ->orderBy('id', 'DESC')
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'upcoming_Appointment' => $appointments
+        ]);
+    }
     public function pending_appointment(User $patient)
     {
         $doctors = User::join('doctors', 'users.id', '=', 'doctors.user_id')
