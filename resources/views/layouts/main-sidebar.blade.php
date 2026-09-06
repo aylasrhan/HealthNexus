@@ -11,15 +11,15 @@
 <div class="app-sidebar__overlay" data-toggle="sidebar"></div>
 <aside class="app-sidebar sidebar-scroll" aria-label="القائمة الرئيسية">
     <div class="main-sidebar-header active">
-        <a class="desktop-logo active hn-brand" href="{{ route('dashboard') }}"><span class="hn-brand-mark"><i class="fe fe-plus"></i></span><strong>Health<span>Nexus</span></strong></a>
-        <a class="logo-icon mobile-logo active hn-brand-compact" href="{{ route('dashboard') }}" aria-label="HealthNexus"><span class="hn-brand-mark"><i class="fe fe-plus"></i></span></a>
+        <a class="desktop-logo active hn-brand" href="{{ route('dashboard') }}"><span class="hn-brand-mark"><i class="fe fe-plus"></i></span><strong>We<span>Care</span></strong></a>
+        <a class="logo-icon mobile-logo active hn-brand-compact" href="{{ route('dashboard') }}" aria-label="WeCare"><span class="hn-brand-mark"><i class="fe fe-plus"></i></span></a>
     </div>
     <div class="main-sidemenu">
-        <div class="app-sidebar__user clearfix">
+        <div class="clearfix app-sidebar__user">
             <div class="user-pro-body">
-                <div class="hn-avatar mx-auto">{{ mb_substr($sidebarUser->name ?? 'م', 0, 1) }}</div>
+                <div class="mx-auto hn-avatar">{{ mb_substr($sidebarUser->name ?? 'م', 0, 1) }}</div>
                 <div class="user-info">
-                    <h4 class="font-weight-semibold mt-3 mb-0">{{ $sidebarUser->name }}</h4>
+                    <h4 class="mt-3 mb-0 font-weight-semibold">{{ $sidebarUser->name }}</h4>
                     <span class="mb-0 text-muted">{{ \App\Models\User::roleLabel($sidebarRole) }}</span>
                 </div>
             </div>
@@ -43,7 +43,7 @@
            @if($isManagement)
                 <li class="side-item side-item-category">التشغيل والتقارير</li>
                 <li class="slide"><a class="side-menu__item {{ request()->routeIs('invoices.*') ? 'active' : '' }}" href="{{ route('invoices.index') }}"><i class="side-menu__icon fe fe-file-text"></i><span class="side-menu__label">الفواتير</span></a></li>
-                
+
                 {{-- أسئلة المرضى والتقارير تظهر لمدير النظام فقط ولا تظهر للسكرتيرة --}}
                 @if($sidebarRole === 'super_admin')
                     <li class="slide"><a class="side-menu__item {{ request()->routeIs('questions.*') ? 'active' : '' }}" href="{{ route('questions.index') }}"><i class="side-menu__icon fe fe-message-circle"></i><span class="side-menu__label">أسئلة المرضى</span></a></li>
@@ -56,7 +56,7 @@
                 <li class="side-item side-item-category">التواصل الطبي</li>
                 @if($doctorSection > 0)
                     <li class="slide"><a class="side-menu__item {{ request()->routeIs('questions.show') ? 'active' : '' }}" href="{{ route('questions.show', $doctorSection) }}"><i class="side-menu__icon fe fe-message-circle"></i><span class="side-menu__label">أسئلة عيادتي</span></a></li>
-                    <li class="slide"><a class="side-menu__item {{ request()->routeIs('questions.answer') ? 'active' : '' }}" href="{{ route('questions.answer', $doctorSection) }}"><i class="side-menu__icon fe fe-help-circle"></i><span class="side-menu__label">بانتظار إجابتي</span>@if(($unansweredQuestionsCount ?? 0) > 0)<span class="badge badge-danger mr-auto">{{ $unansweredQuestionsCount }}</span>@endif</a></li>
+                    <li class="slide"><a class="side-menu__item {{ request()->routeIs('questions.answer') ? 'active' : '' }}" href="{{ route('questions.answer', $doctorSection) }}"><i class="side-menu__icon fe fe-help-circle"></i><span class="side-menu__label">بانتظار إجابتي</span>@if(($unansweredQuestionsCount ?? 0) > 0)<span class="mr-auto badge badge-danger">{{ $unansweredQuestionsCount }}</span>@endif</a></li>
                 @endif
             @endif
 

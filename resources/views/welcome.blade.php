@@ -3,15 +3,15 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>HealthNexus | إدارة الرعاية الصحية</title>
+    <title>WeCare | إدارة الرعاية الصحية</title>
     <meta name="description" content="منصة متكاملة لإدارة المرضى والمواعيد والملفات الطبية">
     <link href="{{ asset('assets/plugins/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
     <link href="{{ asset('assets/css/icons.css') }}" rel="stylesheet">
-    <link href="{{ asset('assets/css/healthnexus.css') }}" rel="stylesheet">
+    <link href="{{ asset('assets/css/wecare.css') }}" rel="stylesheet">
 </head>
 <body class="hn-landing">
 <header class="hn-landing-nav">
-    <a href="{{ url('/') }}" class="hn-brand"><span class="hn-brand-mark"><i class="fe fe-plus"></i></span><strong>Health<span>Nexus</span></strong></a>
+    <a href="{{ url('/') }}" class="hn-brand"><span class="hn-brand-mark"><i class="fe fe-plus"></i></span><strong>We<span>Care</span></strong></a>
     <nav>
         @auth
             <a href="{{ route('dashboard') }}" class="hn-btn hn-btn-primary">لوحة التحكم</a>
@@ -26,7 +26,7 @@
         <div class="hn-hero-content">
             <span class="hn-hero-label"><i class="fe fe-heart"></i> منصة الرعاية الصحية المتكاملة</span>
             <h1>إدارة صحية أكثر وضوحًا، من الموعد إلى الملف الطبي</h1>
-            <p>HealthNexus يجمع المرضى والأطباء والمواعيد والزيارات والتقارير في مساحة عمل عربية واحدة تساعد فريقك على تقديم رعاية أفضل.</p>
+            <p>WeCare يجمع المرضى والأطباء والمواعيد والزيارات والتقارير في مساحة عمل عربية واحدة تساعد فريقك على تقديم رعاية أفضل.</p>
             <div class="hn-actions">
                 @auth<a href="{{ route('dashboard') }}" class="hn-btn hn-btn-primary">فتح لوحة التحكم <i class="fe fe-arrow-left"></i></a>
                 @else<a href="{{ route('login') }}" class="hn-btn hn-btn-primary">ابدأ الآن <i class="fe fe-arrow-left"></i></a>@endauth
@@ -41,6 +41,6 @@
         <article><i class="fe fe-file-text"></i><h2>الملفات الطبية</h2><p>وصول أسرع للتاريخ المرضي والتشخيص والخدمات.</p></article>
     </section>
 </main>
-<footer class="hn-landing-footer">© {{ date('Y') }} HealthNexus — جميع الحقوق محفوظة</footer>
+<footer class="hn-landing-footer">© {{ date('Y') }} WeCare — جميع الحقوق محفوظة</footer>
 </body>
 </html>
