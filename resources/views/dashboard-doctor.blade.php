@@ -2,7 +2,7 @@
 @section('title', 'لوحة الطبيب')
 @section('content')
 @php($maxTrend = max(1, $trend->max('value')))
-<div class="hn-page-heading"><div><span class="hn-badge hn-badge-success">مساحة الطبيب</span><h1 class="mt-2">مرحبًا د. {{ $doctor->name_ar ?? $user->name }}</h1><p>{{ optional($doctor?->gnr_m_clinics)->name_ar ?? 'لم يتم ربط الحساب بعيادة' }} · ملخص عملك السريري اليوم.</p></div><div class="hn-actions"><a href="{{ url('appointments') }}" class="hn-btn hn-btn-primary"><i class="fe fe-calendar"></i> مواعيدي</a><a href="{{ $questionUrl }}" class="hn-btn hn-btn-light"><i class="fe fe-message-circle"></i> أسئلة عيادتي</a></div></div>
+<div class="hn-page-heading"><div><span class="hn-badge hn-badge-success">مساحة الطبيب</span><h1 class="mt-2">مرحبًا . {{  $user->name }}</h1><p>{{ optional($doctor?->gnr_m_clinics)->name_ar ?? 'لم يتم ربط الحساب بعيادة' }} · ملخص عملك السريري اليوم.</p></div><div class="hn-actions"><a href="{{ url('appointments') }}" class="hn-btn hn-btn-primary"><i class="fe fe-calendar"></i> مواعيدي</a><a href="{{ $questionUrl }}" class="hn-btn hn-btn-light"><i class="fe fe-message-circle"></i> أسئلة عيادتي</a></div></div>
 
 @if(!$doctor)<div class="alert alert-warning">حسابك يحمل دور طبيب لكنه غير مرتبط بسجل في جدول الأطباء. يرجى مراجعة مدير النظام.</div>@endif
 
