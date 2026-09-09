@@ -1,0 +1,1 @@
+<article class="hn-public-card hn-public-service-card"><span class="hn-public-service-icon"><i class="fe fe-clipboard"></i></span><div><span>{{ $service->gnr_m_clinics?->name_ar ?? 'خدمة طبية' }}</span><h3>{{ $service->name_ar }}</h3><p>خدمة مقدمة ضمن منظومة WeCare الصحية.</p></div></article>

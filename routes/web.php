@@ -26,6 +26,7 @@ use App\Http\Controllers\Back\UserController;
 use App\Http\Controllers\Back\InvoiceController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\PublicSiteController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -39,8 +40,12 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
+Route::get('/', [PublicSiteController::class, 'home'])->name('home');
+Route::prefix('center')->name('center.')->group(function () {
+    Route::get('about', [PublicSiteController::class, 'about'])->name('about');
+    Route::get('departments', [PublicSiteController::class, 'departments'])->name('departments');
+    Route::get('doctors', [PublicSiteController::class, 'doctors'])->name('doctors');
+    Route::get('services', [PublicSiteController::class, 'services'])->name('services');
 });
 Route::get('/login', function () {
     return view('auth.login');
