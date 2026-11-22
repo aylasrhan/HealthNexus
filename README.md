@@ -26,9 +26,13 @@
 
 ## System Previews & Architecture
 
-| Admin Dashboard | Doctor Portal | Project Structure |
-| :---: | :---: | :---: |
-| ![Admin Dashboard](admin.jpeg) | ![Doctor Portal](doctor.jpeg) | ![Code Structure](code_structure.png) |
+| Admin Dashboard | Doctor Portal |
+| :---: | :---: |
+| ![Admin Dashboard](admin.jpeg) | ![Doctor Portal](doctor.jpeg) |
+
+| Receptionist Dashboard | Project Structure |
+| :---: | :---: |
+| ![Receptionist Dashboard](scrtaria%20(2).jpeg) | ![Code Structure](code_structure.png) |
 
 ---
 
