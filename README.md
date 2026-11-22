@@ -40,4 +40,4 @@
 
 1. **Clone the repository:**
    ```bash
-   git clone [https://github.com/aylasrhan/HealthNexus.git](https://github.com/aylasrhan/HealthNexus.git)
+git clone https://github.com/aylasrhan/HealthNexus.git
